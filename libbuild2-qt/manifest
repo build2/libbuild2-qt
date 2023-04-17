@@ -1,13 +1,13 @@
 : 1
 name: libbuild2-qt
 version: 0.1.0-a.0.z
+project: build2
 language: c++
-summary: build2-qt C++ library
-license: other: proprietary ; Not free/open source.
+summary: Qt compiler (moc, rcc, uic) build system module for build2
+license: MIT ; MIT License.
 description-file: README.md
-url: https://example.org/libbuild2-qt
-email: francois@codesynthesis.com
-#build-error-email: francois@codesynthesis.com
+url: https://github.com/build2/libbuild2-qt
+email: users@build2.org
+build-warning-email: builds@build2.org
 depends: * build2 >= 0.15.0
 depends: * bpkg >= 0.15.0
-#depends: libhello ^1.0.0

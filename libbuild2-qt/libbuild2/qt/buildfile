@@ -14,19 +14,19 @@ src_pfx = [dir_path] $src_root/libbuild2/
 
 cxx.poptions =+ "-I$out_pfx" "-I$src_pfx"
 
-{hbmia obja}{*}: cxx.poptions += -DQT_STATIC_BUILD
-{hbmis objs}{*}: cxx.poptions += -DQT_SHARED_BUILD
+{hbmia obja}{*}: cxx.poptions += -DLIBBUILD2_QT_STATIC_BUILD
+{hbmis objs}{*}: cxx.poptions += -DLIBBUILD2_QT_SHARED_BUILD
 
 # Export options.
 #
 lib{build2-qt}:
 {
-  cxx.export.poptions = "-I$out_pfx" "-I$src_pfx"
+  cxx.export.poptions = "-I$out_root" "-I$src_root"
   cxx.export.libs = $intf_libs
 }
 
-liba{build2-qt}: cxx.export.poptions += -DQT_STATIC
-libs{build2-qt}: cxx.export.poptions += -DQT_SHARED
+liba{build2-qt}: cxx.export.poptions += -DLIBBUILD2_QT_STATIC
+libs{build2-qt}: cxx.export.poptions += -DLIBBUILD2_QT_SHARED
 
 # For pre-releases use the complete version to make sure they cannot be used
 # in place of another pre-release or the final version. See the version module
@@ -37,11 +37,15 @@ if $version.pre_release
 else
   lib{build2-qt}: bin.lib.version = "-$version.major.$version.minor"
 
-# Install into the qt/ subdirectory of, say, /usr/include/ recreating
-# subdirectories.
+# Embed the build system core version as our load suffix.
+#
+libs{build2-qt}: bin.lib.load_suffix = "-$build.version.interface"
+
+# Install into the libbuild2/qt/ subdirectory of, say, /usr/include/
+# recreating subdirectories.
 #
 {hxx ixx txx}{*}:
 {
-  install         = include/qt/
+  install         = include/libbuild2/qt/
   install.subdirs = true
 }
