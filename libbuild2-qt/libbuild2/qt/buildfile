@@ -1,0 +1,47 @@
+intf_libs = # Interface dependencies.
+impl_libs = # Implementation dependencies.
+
+import impl_libs += build2%lib{build2} # Implied interface dependency.
+
+lib{build2-qt}: {hxx ixx txx cxx}{**} $impl_libs $intf_libs
+
+hxx{export}@./: cxx.importable = false
+
+# Build options.
+#
+out_pfx = [dir_path] $out_root/libbuild2/
+src_pfx = [dir_path] $src_root/libbuild2/
+
+cxx.poptions =+ "-I$out_pfx" "-I$src_pfx"
+
+{hbmia obja}{*}: cxx.poptions += -DQT_STATIC_BUILD
+{hbmis objs}{*}: cxx.poptions += -DQT_SHARED_BUILD
+
+# Export options.
+#
+lib{build2-qt}:
+{
+  cxx.export.poptions = "-I$out_pfx" "-I$src_pfx"
+  cxx.export.libs = $intf_libs
+}
+
+liba{build2-qt}: cxx.export.poptions += -DQT_STATIC
+libs{build2-qt}: cxx.export.poptions += -DQT_SHARED
+
+# For pre-releases use the complete version to make sure they cannot be used
+# in place of another pre-release or the final version. See the version module
+# for details on the version.* variable values.
+#
+if $version.pre_release
+  lib{build2-qt}: bin.lib.version = "-$version.project_id"
+else
+  lib{build2-qt}: bin.lib.version = "-$version.major.$version.minor"
+
+# Install into the qt/ subdirectory of, say, /usr/include/ recreating
+# subdirectories.
+#
+{hxx ixx txx}{*}:
+{
+  install         = include/qt/
+  install.subdirs = true
+}
