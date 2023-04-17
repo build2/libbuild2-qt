@@ -9,10 +9,7 @@ hxx{export}@./: cxx.importable = false
 
 # Build options.
 #
-out_pfx = [dir_path] $out_root/libbuild2/
-src_pfx = [dir_path] $src_root/libbuild2/
-
-cxx.poptions =+ "-I$out_pfx" "-I$src_pfx"
+cxx.poptions =+ "-I$out_root" "-I$src_root"
 
 {hbmia obja}{*}: cxx.poptions += -DLIBBUILD2_QT_STATIC_BUILD
 {hbmis objs}{*}: cxx.poptions += -DLIBBUILD2_QT_SHARED_BUILD
