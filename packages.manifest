@@ -1,2 +1,4 @@
 : 1
 location: libbuild2-qt/
+:
+location: libbuild2-qt-tests/
