@@ -2,9 +2,9 @@
 
 #include <libbuild2/scope.hxx>
 
-#include <libbuild2/qt/module.hxx>
-
 #include <libbuild2/qt/moc/module.hxx>
+#include <libbuild2/qt/rcc/module.hxx>
+#include <libbuild2/qt/uic/module.hxx>
 
 namespace build2
 {
@@ -79,7 +79,9 @@ namespace build2
                     bool,
                     module_init_extra& extra)
     {
-      extra.set_module (new module_rcc ());
+      using namespace rcc;
+
+      extra.set_module (new module ());
 
       return true;
     }
@@ -95,6 +97,8 @@ namespace build2
                      bool,
                      module_init_extra& extra)
     {
+      using namespace rcc;
+
       // Load qt.rcc.guess and share its module instance as ours.
       //
       extra.module = load_module (rs, rs, "qt.rcc.guess", loc, extra.hints);
@@ -113,6 +117,8 @@ namespace build2
               bool,
               module_init_extra& extra)
     {
+      using namespace rcc;
+
       // Load qt.rcc.config and share its module instance as ours.
       //
       extra.module = load_module (rs, rs, "qt.rcc.config", loc, extra.hints);
@@ -131,7 +137,9 @@ namespace build2
                     bool,
                     module_init_extra& extra)
     {
-      extra.set_module (new module_uic ());
+      using namespace uic;
+
+      extra.set_module (new module ());
 
       return true;
     }
@@ -147,6 +155,8 @@ namespace build2
                      bool,
                      module_init_extra& extra)
     {
+      using namespace uic;
+
       // Load qt.uic.guess and share its module instance as ours.
       //
       extra.module = load_module (rs, rs, "qt.uic.guess", loc, extra.hints);
@@ -165,6 +175,8 @@ namespace build2
               bool,
               module_init_extra& extra)
     {
+      using namespace uic;
+
       // Load qt.uic.config and share its module instance as ours.
       //
       extra.module = load_module (rs, rs, "qt.uic.config", loc, extra.hints);
