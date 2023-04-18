@@ -27,9 +27,8 @@ namespace build2
     //
     // Each of the `qt.{moc,rcc,uic}` modules split the configuration process
     // into two parts: guessing the compiler information and the actual
-    // configuration. This allows adjusting configuration (say the edition or
-    // enabled experimental features) base on the compiler information by
-    // first loading the guess module.
+    // configuration. This allows adjusting configuration base on the compiler
+    // information by first loading the guess module.
     //
     //-
     extern "C" LIBBUILD2_QT_SYMEXPORT const module_functions*

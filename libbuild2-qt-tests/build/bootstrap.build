@@ -3,5 +3,4 @@ project = libbuild2-qt-tests
 using version
 using config
 using test
-using install
 using dist

@@ -4,6 +4,8 @@
 
 #include <libbuild2/qt/module.hxx>
 
+#include <libbuild2/qt/moc/module.hxx>
+
 namespace build2
 {
   namespace qt
@@ -19,7 +21,9 @@ namespace build2
                     bool,
                     module_init_extra& extra)
     {
-      extra.set_module (new module_moc ());
+      using namespace moc;
+
+      extra.set_module (new module ());
 
       return true;
     }
@@ -35,6 +39,8 @@ namespace build2
                      bool,
                      module_init_extra& extra)
     {
+      using namespace moc;
+
       // Load qt.moc.guess and share its module instance as ours.
       //
       extra.module = load_module (rs, rs, "qt.moc.guess", loc, extra.hints);
@@ -53,6 +59,8 @@ namespace build2
               bool,
               module_init_extra& extra)
     {
+      using namespace moc;
+
       // Load qt.moc.config and share its module instance as ours.
       //
       extra.module = load_module (rs, rs, "qt.moc.config", loc, extra.hints);
