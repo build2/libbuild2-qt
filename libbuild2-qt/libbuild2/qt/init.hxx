@@ -13,6 +13,8 @@ namespace build2
     //
     // Submodules:
     //
+    //   `qt`            -- load the `qt.moc`, `qt.rcc`, and `qt.uic` submodules.
+    //
     //   `qt.moc.guess`  -- set variables describing the moc compiler.
     //   `qt.moc.config` -- load `qt.moc.guess` and set the rest of the variables.
     //   `qt.moc`        -- load `qt.moc.config` and register targets and rules.

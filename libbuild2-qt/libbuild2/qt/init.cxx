@@ -11,6 +11,24 @@ namespace build2
   namespace qt
   {
     //-
+    // The `qt` module.
+    //-
+    bool
+    qt_init (scope& rs,
+             scope& bs,
+             const location& loc,
+             bool,
+             bool,
+             module_init_extra& extra)
+    {
+      load_module (rs, bs, "qt.moc", loc, extra.hints);
+      load_module (rs, bs, "qt.rcc", loc, extra.hints);
+      load_module (rs, bs, "qt.uic", loc, extra.hints);
+
+      return true;
+    }
+
+    //-
     // The `qt.moc.guess` module.
     //-
     bool
@@ -189,6 +207,7 @@ namespace build2
       // NOTE: don't forget to also update the documentation in init.hxx if
       //       changing anything here.
 
+      {"qt",            nullptr, qt_init},
       {"qt.moc.guess",  nullptr, moc_guess_init},
       {"qt.moc.config", nullptr, moc_config_init},
       {"qt.moc",        nullptr, moc_init},
