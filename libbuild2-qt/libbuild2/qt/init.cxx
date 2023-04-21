@@ -1,6 +1,8 @@
 #include <libbuild2/qt/init.hxx>
 
+#include <libbuild2/file.hxx>
 #include <libbuild2/scope.hxx>
+#include <libbuild2/target.hxx>
 #include <libbuild2/variable.hxx>
 
 #include <libbuild2/qt/moc/module.hxx>
@@ -44,14 +46,75 @@ namespace build2
         fail (loc) << "set " << var << " before the using directive" << endf;
     }
 
+    // Import a Qt compiler and print the configuration report.
+    //
+    import_result<exe>
+    import_exe (const char* cn, // Compiler name ("moc"/"rcc"/"uic")
+                uint64_t ver,
+                scope& rs,
+                const location& loc,
+                bool opt)
+    {
+      import_result<exe> ir;
+      bool new_cfg (false);
+      {
+        auto import = [&rs, &loc, opt, &new_cfg] (name&& n)
+        {
+          return import_direct<exe> (new_cfg,
+                                     rs,
+                                     move (n),
+                                     true, // phase2
+                                     opt,
+                                     true, // metadata
+                                     loc,
+                                     "module load");
+        };
+
+        // Version string, exe name, project name.
+        //
+        string vs (to_string (ver));
+        string en ("qt" + vs + cn);                       // "qt5moc"
+        string pn ("Qt" + vs + ucase (cn[0]) + (cn + 1)); // "Qt5Moc"
+
+        // Import the project-qualified target name (e.g.,
+        // "Qt5Moc%exe{qt5moc}").
+        //
+        ir = import (name (move (pn), dir_path (), "exe", move (en)));
+
+        // If that failed, try the common compiler name ("moc"/"rcc"/"uic").
+        //
+        if (ir.target == nullptr)
+          ir = import (name ("exe", cn));
+      }
+
+      // Print the report.
+      //
+      // If this is a configuration with new values, then print the report
+      // at verbosity level 2 and up (-v).
+      //
+      if (verb >= (new_cfg ? 2 : 3))
+      {
+        diag_record dr (text);
+        dr << cn << " " << project (rs) << '@' << rs << '\n';
+
+        if (ir.target != nullptr)
+          dr << "  " << cn << "        " << ir << '\n';
+        else
+          dr << "  " << cn << "        "
+             << "not found, leaving unconfigured";
+      }
+
+      return ir;
+    }
+
     // The `qt.moc.guess` module.
     //
     bool
-    moc_guess_init (scope& /*rs*/,
+    moc_guess_init (scope& rs,
                     scope& bs,
                     const location& loc,
                     bool first,
-                    bool,
+                    bool opt,
                     module_init_extra& extra)
     {
       using namespace moc;
@@ -59,7 +122,14 @@ namespace build2
       uint64_t v (check_version (bs, loc, first));
       if (first)
       {
-        extra.set_module (new module (data {v}));
+        import_result<exe> ir (import_exe ("moc", v, rs, loc, opt));
+
+        const exe* tgt (ir.target);
+
+        if (tgt == nullptr)
+          return false;
+
+        extra.set_module (new module (data {v, *tgt}));
       }
       else
       {
@@ -124,11 +194,11 @@ namespace build2
     // The `qt.rcc.guess` module.
     //
     bool
-    rcc_guess_init (scope& /*rs*/,
+    rcc_guess_init (scope& rs,
                     scope& bs,
                     const location& loc,
                     bool first,
-                    bool,
+                    bool opt,
                     module_init_extra& extra)
     {
       using namespace rcc;
@@ -136,7 +206,14 @@ namespace build2
       uint64_t v (check_version (bs, loc, first));
       if (first)
       {
-        extra.set_module (new module (data {v}));
+        import_result<exe> ir (import_exe ("rcc", v, rs, loc, opt));
+
+        const exe* tgt (ir.target);
+
+        if (tgt == nullptr)
+          return false;
+
+        extra.set_module (new module (data {v, *tgt}));
       }
       else
       {
@@ -201,19 +278,27 @@ namespace build2
     // The `qt.uic.guess` module.
     //
     bool
-    uic_guess_init (scope& /*rs*/,
+    uic_guess_init (scope& rs,
                     scope& bs,
                     const location& loc,
                     bool first,
-                    bool,
+                    bool opt,
                     module_init_extra& extra)
     {
       using namespace uic;
 
       uint64_t v (check_version (bs, loc, first));
+
       if (first)
       {
-        extra.set_module (new module (data {v}));
+        import_result<exe> ir (import_exe ("uic", v, rs, loc, opt));
+
+        const exe* tgt (ir.target);
+
+        if (tgt == nullptr)
+          return false;
+
+        extra.set_module (new module (data {v, *tgt}));
       }
       else
       {
