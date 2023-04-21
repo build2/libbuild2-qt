@@ -28,15 +28,15 @@ namespace build2
       // The Qt version being used. Must be set before loading any of the
       // `qt` modules. Valid values are 5 and 6.
       //
-      // -
+      //-
       const variable& var (first
                            ? vp.insert<uint64_t> ("qt.version")
                            : *vp.find ("qt.version"));
 
-      if (uint64_t* v = cast_null<uint64_t> (bs[var]))
+      if (const uint64_t* v = cast_null<uint64_t> (bs[var]))
       {
         if (*v < 5 || *v > 6)
-          fail (loc) << "invalid " << var << " value " << *f << endf;
+          fail (loc) << "invalid " << var << " value " << *v << endf;
 
         return *v;
       }
@@ -56,7 +56,7 @@ namespace build2
     {
       using namespace moc;
 
-      uint64_t v (check_version (bs, loc));
+      uint64_t v (check_version (bs, loc, first));
       if (first)
       {
         extra.set_module (new module (data {v}));
@@ -66,8 +66,8 @@ namespace build2
         module& m (extra.module_as<module> ());
 
         if (v != m.version)
-          fail (loc) << "inconsistent qt.version value " << v <<
-            info << "previous value " << m.version;
+          fail (loc) << "inconsistent qt.version value " << v << info
+                     << "previous value " << m.version;
       }
 
       return true;
@@ -133,11 +133,18 @@ namespace build2
     {
       using namespace rcc;
 
-      // @@
-      //
+      uint64_t v (check_version (bs, loc, first));
       if (first)
       {
-        extra.set_module (new module (data {check_version (bs, loc)}));
+        extra.set_module (new module (data {v}));
+      }
+      else
+      {
+        module& m (extra.module_as<module> ());
+
+        if (v != m.version)
+          fail (loc) << "inconsistent qt.version value " << v << info
+                     << "previous value " << m.version;
       }
 
       return true;
@@ -203,11 +210,18 @@ namespace build2
     {
       using namespace uic;
 
-      // @@
-      //
+      uint64_t v (check_version (bs, loc, first));
       if (first)
       {
-        extra.set_module (new module (data {check_version (bs, loc)}));
+        extra.set_module (new module (data {v}));
+      }
+      else
+      {
+        module& m (extra.module_as<module> ());
+
+        if (v != m.version)
+          fail (loc) << "inconsistent qt.version value " << v << info
+                     << "previous value " << m.version;
       }
 
       return true;

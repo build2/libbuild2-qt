@@ -10,7 +10,7 @@ namespace build2
   {
     namespace moc
     {
-      class module: public build2::module, virtual data
+      class module: public build2::module, public virtual data
       {
       public:
         explicit module (data&& d) : data (move (d)) {}
