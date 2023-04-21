@@ -16,7 +16,7 @@ tests: * libbuild2-qt-tests == $
 builds: none
 
 qt5-builds: default
-qt5-build-config: config.libbuild2_qt_tests.qt=5
+qt5-build-config: { config.libbuild2_qt_tests.qt=5 }+ libbuild2-qt-tests
 
 qt6-builds: default
-qt6-build-config: config.libbuild2_qt_tests.qt=6
+qt6-build-config: { config.libbuild2_qt_tests.qt=6 }+ libbuild2-qt-tests

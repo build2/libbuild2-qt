@@ -11,37 +11,37 @@ namespace build2
 {
   namespace qt
   {
-    // Get and check the value of `qt.version` (defined before the using
-    // directive), enter the variable, and return its value.
+    // Enter the `qt.version` variable, get its values, verify correct,
+    // and return it.
     //
     static uint64_t
-    check_version (scope& s, const location& loc)
+    check_version (scope& bs, const location& loc, bool first)
     {
-      variable_pool& vp (s.var_pool (true /* public */));
-      const variable& var (vp.insert<uint64_t> ("qt.version"));
+      // The variable that we enter is qualified so go straight for the public
+      // variable pool.
+      //
+      variable_pool& vp (bs.var_pool (true /* public */));
 
-      lookup l (s[var]);
-      if (!l)
-        fail (loc) << "define " << var.name << " before the using directive";
+      //-
+      //     qt.version [uint64]
+      //
+      // The Qt version being used. Must be set before loading any of the
+      // `qt` modules. Valid values are 5 and 6.
+      //
+      // -
+      const variable& var (first
+                           ? vp.insert<uint64_t> ("qt.version")
+                           : *vp.find ("qt.version"));
 
-      return cast<uint64_t> (l);
-    }
+      if (uint64_t* v = cast_null<uint64_t> (bs[var]))
+      {
+        if (*v < 5 || *v > 6)
+          fail (loc) << "invalid " << var << " value " << *f << endf;
 
-    // The `qt` module.
-    //
-    bool
-    qt_init (scope& rs,
-             scope& bs,
-             const location& loc,
-             bool,
-             bool,
-             module_init_extra& extra)
-    {
-      load_module (rs, bs, "qt.moc", loc, extra.hints);
-      load_module (rs, bs, "qt.rcc", loc, extra.hints);
-      load_module (rs, bs, "qt.uic", loc, extra.hints);
-
-      return true;
+        return *v;
+      }
+      else
+        fail (loc) << "set " << var << " before the using directive" << endf;
     }
 
     // The `qt.moc.guess` module.
@@ -50,13 +50,25 @@ namespace build2
     moc_guess_init (scope& /*rs*/,
                     scope& bs,
                     const location& loc,
-                    bool,
+                    bool first,
                     bool,
                     module_init_extra& extra)
     {
       using namespace moc;
 
-      extra.set_module (new module (data {check_version (bs, loc)}));
+      uint64_t v (check_version (bs, loc));
+      if (first)
+      {
+        extra.set_module (new module (data {v}));
+      }
+      else
+      {
+        module& m (extra.module_as<module> ());
+
+        if (v != m.version)
+          fail (loc) << "inconsistent qt.version value " << v <<
+            info << "previous value " << m.version;
+      }
 
       return true;
     }
@@ -67,7 +79,7 @@ namespace build2
     moc_config_init (scope& rs,
                      scope& bs,
                      const location& loc,
-                     bool,
+                     bool first,
                      bool,
                      module_init_extra& extra)
     {
@@ -75,7 +87,12 @@ namespace build2
 
       // Load qt.moc.guess and share its module instance as ours.
       //
-      extra.module = load_module (rs, bs, "qt.moc.guess", loc, extra.hints);
+      {
+        auto m (load_module (rs, bs, "qt.moc.guess", loc, extra.hints));
+
+        if (first)
+          extra.module = move (m);
+      }
 
       return true;
     }
@@ -86,7 +103,7 @@ namespace build2
     moc_init (scope& rs,
               scope& bs,
               const location& loc,
-              bool,
+              bool first,
               bool,
               module_init_extra& extra)
     {
@@ -94,7 +111,12 @@ namespace build2
 
       // Load qt.moc.config and share its module instance as ours.
       //
-      extra.module = load_module (rs, bs, "qt.moc.config", loc, extra.hints);
+      {
+        auto m (load_module (rs, bs, "qt.moc.config", loc, extra.hints));
+
+        if (first)
+          extra.module = move (m);
+      }
 
       return true;
     }
@@ -105,13 +127,18 @@ namespace build2
     rcc_guess_init (scope& /*rs*/,
                     scope& bs,
                     const location& loc,
-                    bool,
+                    bool first,
                     bool,
                     module_init_extra& extra)
     {
       using namespace rcc;
 
-      extra.set_module (new module (data {check_version (bs, loc)}));
+      // @@
+      //
+      if (first)
+      {
+        extra.set_module (new module (data {check_version (bs, loc)}));
+      }
 
       return true;
     }
@@ -122,7 +149,7 @@ namespace build2
     rcc_config_init (scope& rs,
                      scope& bs,
                      const location& loc,
-                     bool,
+                     bool first,
                      bool,
                      module_init_extra& extra)
     {
@@ -130,7 +157,12 @@ namespace build2
 
       // Load qt.rcc.guess and share its module instance as ours.
       //
-      extra.module = load_module (rs, bs, "qt.rcc.guess", loc, extra.hints);
+      {
+        auto m (load_module (rs, bs, "qt.rcc.guess", loc, extra.hints));
+
+        if (first)
+          extra.module = move (m);
+      }
 
       return true;
     }
@@ -141,7 +173,7 @@ namespace build2
     rcc_init (scope& rs,
               scope& bs,
               const location& loc,
-              bool,
+              bool first,
               bool,
               module_init_extra& extra)
     {
@@ -149,7 +181,12 @@ namespace build2
 
       // Load qt.rcc.config and share its module instance as ours.
       //
-      extra.module = load_module (rs, bs, "qt.rcc.config", loc, extra.hints);
+      {
+        auto m (load_module (rs, bs, "qt.rcc.config", loc, extra.hints));
+
+        if (first)
+          extra.module = move (m);
+      }
 
       return true;
     }
@@ -160,13 +197,18 @@ namespace build2
     uic_guess_init (scope& /*rs*/,
                     scope& bs,
                     const location& loc,
-                    bool,
+                    bool first,
                     bool,
                     module_init_extra& extra)
     {
       using namespace uic;
 
-      extra.set_module (new module (data {check_version (bs, loc)}));
+      // @@
+      //
+      if (first)
+      {
+        extra.set_module (new module (data {check_version (bs, loc)}));
+      }
 
       return true;
     }
@@ -177,7 +219,7 @@ namespace build2
     uic_config_init (scope& rs,
                      scope& bs,
                      const location& loc,
-                     bool,
+                     bool first,
                      bool,
                      module_init_extra& extra)
     {
@@ -185,7 +227,12 @@ namespace build2
 
       // Load qt.uic.guess and share its module instance as ours.
       //
-      extra.module = load_module (rs, bs, "qt.uic.guess", loc, extra.hints);
+      {
+        auto m (load_module (rs, bs, "qt.uic.guess", loc, extra.hints));
+
+        if (first)
+          extra.module = move (m);
+      }
 
       return true;
     }
@@ -196,7 +243,7 @@ namespace build2
     uic_init (scope& rs,
               scope& bs,
               const location& loc,
-              bool,
+              bool first,
               bool,
               module_init_extra& extra)
     {
@@ -204,7 +251,29 @@ namespace build2
 
       // Load qt.uic.config and share its module instance as ours.
       //
-      extra.module = load_module (rs, bs, "qt.uic.config", loc, extra.hints);
+      {
+        auto m (load_module (rs, bs, "qt.uic.config", loc, extra.hints));
+
+        if (first)
+          extra.module = move (m);
+      }
+
+      return true;
+    }
+
+    // The `qt` module.
+    //
+    bool
+    qt_init (scope& rs,
+             scope& bs,
+             const location& loc,
+             bool /*first*/,
+             bool,
+             module_init_extra& extra)
+    {
+      load_module (rs, bs, "qt.moc", loc, extra.hints);
+      load_module (rs, bs, "qt.rcc", loc, extra.hints);
+      load_module (rs, bs, "qt.uic", loc, extra.hints);
 
       return true;
     }
@@ -214,7 +283,6 @@ namespace build2
       // NOTE: don't forget to also update the documentation in init.hxx if
       //       changing anything here.
 
-      {"qt",            nullptr, qt_init},
       {"qt.moc.guess",  nullptr, moc_guess_init},
       {"qt.moc.config", nullptr, moc_config_init},
       {"qt.moc",        nullptr, moc_init},
@@ -224,6 +292,7 @@ namespace build2
       {"qt.uic.guess",  nullptr, uic_guess_init},
       {"qt.uic.config", nullptr, uic_config_init},
       {"qt.uic",        nullptr, uic_init},
+      {"qt",            nullptr, qt_init},
       {nullptr,         nullptr, nullptr}
     };
 
