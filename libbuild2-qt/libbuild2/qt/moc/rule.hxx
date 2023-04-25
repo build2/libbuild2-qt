@@ -11,7 +11,7 @@ namespace build2
       struct data
       {
         const uint64_t version; // qt.version
-        const exe&     ctgt;    // Moc compiler target.
+        const exe&     moc;     // Moc compiler target.
       };
     }
   }

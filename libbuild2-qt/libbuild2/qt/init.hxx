@@ -32,6 +32,10 @@ namespace build2
     // configuration. This allows adjusting configuration base on the compiler
     // information by first loading the guess module.
     //
+    // Note that only the qt.*.guess modules support optional loading. In the
+    // unlikely case that optional loading is needed, one must first load the
+    // qt.*.guess module, check if successful, then load the rest.
+    //
     //-
     extern "C" LIBBUILD2_QT_SYMEXPORT const module_functions*
     build2_qt_load ();

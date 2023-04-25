@@ -48,43 +48,42 @@ namespace build2
 
     // Import a Qt compiler and print the configuration report.
     //
-    import_result<exe>
-    import_exe (const char* cn, // Compiler name ("moc"/"rcc"/"uic")
-                uint64_t ver,
-                scope& rs,
+    // Note that the compiler name is currently assumed to match the module
+    // name (e.g., `moc` and `qt.moc`).
+    //
+    static const exe*
+    import_exe (scope& rs,
+                const char* name,   // Compiler name (`moc`/`rcc`/`uic`)
+                uint64_t ver,       // Qt version.
                 const location& loc,
                 bool opt)
     {
       import_result<exe> ir;
       bool new_cfg (false);
       {
-        auto import = [&rs, &loc, opt, &new_cfg] (name&& n)
-        {
-          return import_direct<exe> (new_cfg,
-                                     rs,
-                                     move (n),
-                                     true, // phase2
-                                     opt,
-                                     true, // metadata
-                                     loc,
-                                     "module load");
-        };
-
+        // Import the project-qualified target name (e.g.,
+        // Qt5Moc%exe{qt5moc}).
+        //
         // Version string, exe name, project name.
         //
         string vs (to_string (ver));
-        string en ("qt" + vs + cn);                       // "qt5moc"
-        string pn ("Qt" + vs + ucase (cn[0]) + (cn + 1)); // "Qt5Moc"
+        string en ("qt" + vs + name);                         // `qt5moc`
+        string pn ("Qt" + vs + ucase (name[0]) + (name + 1)); // `Qt5Moc`
 
-        // Import the project-qualified target name (e.g.,
-        // "Qt5Moc%exe{qt5moc}").
-        //
-        ir = import (name (move (pn), dir_path (), "exe", move (en)));
+        ir = import_direct<exe> (
+          new_cfg,
+          rs,
+          name (move (pn), dir_path (), "exe", move (en)),
+          true, // phase2
+          opt,
+          true, // metadata
+          loc,
+          "module load");
 
-        // If that failed, try the common compiler name ("moc"/"rcc"/"uic").
-        //
-        if (ir.target == nullptr)
-          ir = import (name ("exe", cn));
+        // @@ TODO: maybe/later fallback to system-installed upstream names
+        //    (`moc`/`rcc`/`uic`). To do this properly we will need to import
+        //    without metadata and then extract it in an ad hoc way (e.g., by
+        //    running the executable with --verison, etc).
       }
 
       // Print the report.
@@ -95,16 +94,15 @@ namespace build2
       if (verb >= (new_cfg ? 2 : 3))
       {
         diag_record dr (text);
-        dr << cn << " " << project (rs) << '@' << rs << '\n';
+        dr << "qt." << name << " " << project (rs) << '@' << rs << '\n';
 
         if (ir.target != nullptr)
-          dr << "  " << cn << "        " << ir << '\n';
+          dr << "  " << name << "        " << ir << '\n';
         else
-          dr << "  " << cn << "        "
-             << "not found, leaving unconfigured";
+          dr << "  " << name << "        not found, leaving unconfigured";
       }
 
-      return ir;
+      return ir.target;
     }
 
     // The `qt.moc.guess` module.
@@ -124,12 +122,12 @@ namespace build2
       {
         import_result<exe> ir (import_exe ("moc", v, rs, loc, opt));
 
-        const exe* tgt (ir.target);
+        const exe* moc (ir.target);
 
-        if (tgt == nullptr)
+        if (moc == nullptr)
           return false;
 
-        extra.set_module (new module (data {v, *tgt}));
+        extra.set_module (new module (data {v, *moc}));
       }
       else
       {
@@ -150,10 +148,13 @@ namespace build2
                      scope& bs,
                      const location& loc,
                      bool first,
-                     bool,
+                     bool opt,
                      module_init_extra& extra)
     {
       using namespace moc;
+
+      if (opt)
+        fail (loc) << "qt.moc.config does not support optional loading";
 
       // Load qt.moc.guess and share its module instance as ours.
       //
