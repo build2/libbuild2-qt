@@ -55,12 +55,12 @@ namespace build2
     //
     static const exe*
     import_exe (scope& rs,
-                const string& name,   // Compiler name (`moc`/`rcc`/`uic`).
+                const string& name, // Compiler name (`moc`/`rcc`/`uic`).
                 uint64_t qt_ver,    // Qt version (major).
                 const location& loc,
                 bool opt)
     {
-      string exe_name ("qt" + to_string (qt_ver) + name); // `qt5moc` @@
+      string exe_name ("qt" + to_string (qt_ver) + name); // `qt5moc`
 
       // Enter variables.
       //
@@ -86,7 +86,7 @@ namespace build2
 
         // Project name (e.g., `Qt5Moc`).
         //
-        string pn ("Qt" + to_string (qt_ver) + ucase (name[0]) + (name + 1));
+        string pn ("Qt" + to_string (qt_ver) + ucase (name[0]) + &name[1]);
 
         ir = import_direct<exe> (
           new_cfg,
@@ -108,8 +108,12 @@ namespace build2
 
       // Extract metadata.
       //
-      auto* ver (tgt != nullptr ? &cast<string> (tgt->vars[v_ver]) : nullptr);
-      auto* sum (tgt != nullptr ? &cast<string> (tgt->vars[v_sum]) : nullptr);
+      auto* ver (tgt != nullptr
+                     ? &cast<string> (tgt->vars[exe_name + ".version"])
+                     : nullptr);
+      auto* sum (tgt != nullptr
+                     ? &cast<string> (tgt->vars[exe_name + ".checksum"])
+                     : nullptr);
 
       // Print the report.
       //
@@ -162,7 +166,7 @@ namespace build2
     {
       using namespace moc;
 
-      tracer trace ("qt::moc_guess_init"); // @@
+      tracer trace ("qt::moc_guess_init");
       l5 ([&] { trace << "for " << bs; });
 
       // Adjust module config.build save priority (code generator).
@@ -203,7 +207,7 @@ namespace build2
     {
       using namespace moc;
 
-      tracer trace ("qt.moc::config_init");
+      tracer trace ("qt::moc_config_init");
       l5 ([&] { trace << "for " << bs; });
 
       if (opt)
@@ -233,7 +237,7 @@ namespace build2
     {
       using namespace moc;
 
-      tracer trace ("qt.moc::init");
+      tracer trace ("qt::moc_init");
       l5 ([&] { trace << "for " << bs; });
 
       if (opt)
@@ -263,7 +267,7 @@ namespace build2
     {
       using namespace rcc;
 
-      tracer trace ("qt.rcc::guess_init");
+      tracer trace ("qt::rcc_guess_init");
       l5 ([&] { trace << "for " << bs; });
 
       // Adjust module config.build save priority (code generator).
@@ -304,7 +308,7 @@ namespace build2
     {
       using namespace rcc;
 
-      tracer trace ("qt.rcc::config_init");
+      tracer trace ("qt::rcc_config_init");
       l5 ([&] { trace << "for " << bs; });
 
       if (opt)
@@ -334,7 +338,7 @@ namespace build2
     {
       using namespace rcc;
 
-      tracer trace ("qt.rcc::init");
+      tracer trace ("qt::rcc_init");
       l5 ([&] { trace << "for " << bs; });
 
       if (opt)
@@ -364,7 +368,7 @@ namespace build2
     {
       using namespace uic;
 
-      tracer trace ("qt.uic::guess_init");
+      tracer trace ("qt::uic_guess_init");
       l5 ([&] { trace << "for " << bs; });
 
       // Adjust module config.build save priority (code generator).
@@ -406,7 +410,7 @@ namespace build2
     {
       using namespace uic;
 
-      tracer trace ("qt.uic::config_init");
+      tracer trace ("qt::uic_config_init");
       l5 ([&] { trace << "for " << bs; });
 
       if (opt)
@@ -436,7 +440,7 @@ namespace build2
     {
       using namespace uic;
 
-      tracer trace ("qt.uic::init");
+      tracer trace ("qt::uic_init");
       l5 ([&] { trace << "for " << bs; });
 
       if (opt)
