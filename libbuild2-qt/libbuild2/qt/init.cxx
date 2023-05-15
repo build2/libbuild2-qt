@@ -73,7 +73,7 @@ namespace build2
         ir = import_direct<exe> (
           new_cfg,
           rs,
-          name (move (pn), dir_path (), "exe", move (en)),
+          build2::name (move (pn), dir_path (), "exe", move (en)),
           true, // phase2
           opt,
           true, // metadata
@@ -83,7 +83,7 @@ namespace build2
         // @@ TODO: maybe/later fallback to system-installed upstream names
         //    (`moc`/`rcc`/`uic`). To do this properly we will need to import
         //    without metadata and then extract it in an ad hoc way (e.g., by
-        //    running the executable with --verison, etc).
+        //    running the executable with --version, etc).
       }
 
       // Print the report.
@@ -120,9 +120,7 @@ namespace build2
       uint64_t v (check_version (bs, loc, first));
       if (first)
       {
-        import_result<exe> ir (import_exe ("moc", v, rs, loc, opt));
-
-        const exe* moc (ir.target);
+        const exe* moc (import_exe (rs, "moc", v, loc, opt));
 
         if (moc == nullptr)
           return false;
@@ -175,10 +173,13 @@ namespace build2
               scope& bs,
               const location& loc,
               bool first,
-              bool,
+              bool opt,
               module_init_extra& extra)
     {
       using namespace moc;
+
+      if (opt)
+        fail (loc) << "qt.moc does not support optional loading";
 
       // Load qt.moc.config and share its module instance as ours.
       //
@@ -207,14 +208,12 @@ namespace build2
       uint64_t v (check_version (bs, loc, first));
       if (first)
       {
-        import_result<exe> ir (import_exe ("rcc", v, rs, loc, opt));
+        const exe* rcc (import_exe (rs, "rcc", v, loc, opt));
 
-        const exe* tgt (ir.target);
-
-        if (tgt == nullptr)
+        if (rcc == nullptr)
           return false;
 
-        extra.set_module (new module (data {v, *tgt}));
+        extra.set_module (new module (data {v, *rcc}));
       }
       else
       {
@@ -235,10 +234,13 @@ namespace build2
                      scope& bs,
                      const location& loc,
                      bool first,
-                     bool,
+                     bool opt,
                      module_init_extra& extra)
     {
       using namespace rcc;
+
+      if (opt)
+        fail (loc) << "qt.rcc.config does not support optional loading";
 
       // Load qt.rcc.guess and share its module instance as ours.
       //
@@ -259,10 +261,13 @@ namespace build2
               scope& bs,
               const location& loc,
               bool first,
-              bool,
+              bool opt,
               module_init_extra& extra)
     {
       using namespace rcc;
+
+      if (opt)
+        fail (loc) << "qt.rcc does not support optional loading";
 
       // Load qt.rcc.config and share its module instance as ours.
       //
@@ -292,14 +297,12 @@ namespace build2
 
       if (first)
       {
-        import_result<exe> ir (import_exe ("uic", v, rs, loc, opt));
+        const exe* uic (import_exe (rs, "uic", v, loc, opt));
 
-        const exe* tgt (ir.target);
-
-        if (tgt == nullptr)
+        if (uic == nullptr)
           return false;
 
-        extra.set_module (new module (data {v, *tgt}));
+        extra.set_module (new module (data {v, *uic}));
       }
       else
       {
@@ -320,10 +323,13 @@ namespace build2
                      scope& bs,
                      const location& loc,
                      bool first,
-                     bool,
+                     bool opt,
                      module_init_extra& extra)
     {
       using namespace uic;
+
+      if (opt)
+        fail (loc) << "qt.uic.config does not support optional loading";
 
       // Load qt.uic.guess and share its module instance as ours.
       //
@@ -344,10 +350,13 @@ namespace build2
               scope& bs,
               const location& loc,
               bool first,
-              bool,
+              bool opt,
               module_init_extra& extra)
     {
       using namespace uic;
+
+      if (opt)
+        fail (loc) << "qt.uic does not support optional loading";
 
       // Load qt.uic.config and share its module instance as ours.
       //
