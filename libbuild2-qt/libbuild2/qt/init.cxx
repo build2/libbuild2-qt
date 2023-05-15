@@ -55,21 +55,25 @@ namespace build2
     //
     static const exe*
     import_exe (scope& rs,
-                const char* name,   // Compiler name (`moc`/`rcc`/`uic`)
-                uint64_t qt_ver,    // Qt version (major)
+                const string& name,   // Compiler name (`moc`/`rcc`/`uic`).
+                uint64_t qt_ver,    // Qt version (major).
                 const location& loc,
                 bool opt)
     {
-      string exe_name ("qt" + to_string (qt_ver) + name); // `qt5moc`
+      string exe_name ("qt" + to_string (qt_ver) + name); // `qt5moc` @@
 
-      // Enter metadata variables.
+      // Enter variables.
       //
       // They are all qualified so go straight for the public variable pool.
       //
+      // The qt.{moc,rcc,uic} variables (untyped) are the imported compiler
+      // target name.
+      //
       variable_pool& vp (rs.var_pool (true /* public */));
 
-      auto& v_ver (vp.insert<string> (exe_name + ".version"));
-      auto& v_sum (vp.insert<string> (exe_name + ".checksum"));
+      auto& v_tgt (vp.insert ("qt." + name));
+      auto& v_ver (vp.insert<string> ("qt." + name + ".version"));
+      auto& v_sum (vp.insert<string> ("qt." + name + ".checksum"));
 
       // Import the compiler target.
       //
@@ -127,23 +131,21 @@ namespace build2
 
       if (tgt != nullptr)
       {
-        // The `moc`/`rcc`/`uic` variable (untyped) is an imported compiler
-        // target name.
-        //
-        rs.assign (name) = move (ir.name);
+        rs.assign (v_tgt) = move (ir.name);
         rs.assign (v_sum) = *sum;
         rs.assign (v_ver) = *ver;
 
         {
           standard_version v (*ver);
 
-          string pfx (string ("qt.") + name + ".version"); // `qt.moc.version`
-          rs.assign<uint64_t> (pfx + ".number") = v.version;
-          rs.assign<uint64_t> (pfx + ".major") = v.major ();
-          rs.assign<uint64_t> (pfx + ".minor") = v.minor ();
-          rs.assign<uint64_t> (pfx + ".patch") = v.patch ();
+          rs.assign<uint64_t> ("qt." + name + ".version.number") = v.version;
+          rs.assign<uint64_t> ("qt." + name + ".version.major") = v.major ();
+          rs.assign<uint64_t> ("qt." + name + ".version.minor") = v.minor ();
+          rs.assign<uint64_t> ("qt." + name + ".version.patch") = v.patch ();
         }
       }
+      else
+        rs.assign (v_tgt) = nullptr; // More direct indication.
 
       return tgt;
     }
@@ -160,7 +162,7 @@ namespace build2
     {
       using namespace moc;
 
-      tracer trace ("qt.moc::guess_init");
+      tracer trace ("qt::moc_guess_init"); // @@
       l5 ([&] { trace << "for " << bs; });
 
       // Adjust module config.build save priority (code generator).
