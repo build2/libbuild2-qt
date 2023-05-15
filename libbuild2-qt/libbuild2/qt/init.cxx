@@ -222,6 +222,14 @@ namespace build2
           extra.module = move (m);
       }
 
+      // Configuration.
+      //
+      // config.qt.moc.options
+      //
+      // Note that we merge it into the corresponding qt.moc.* variable.
+      //
+      config::append_config<strings> (rs, rs, "qt.moc.options", nullptr);
+
       return true;
     }
 
@@ -322,6 +330,14 @@ namespace build2
         if (first)
           extra.module = move (m);
       }
+
+      // Configuration.
+      //
+      // config.qt.rcc.options
+      //
+      // Note that we merge it into the corresponding qt.rcc.* variable.
+      //
+      config::append_config<strings> (rs, rs, "qt.rcc.options", nullptr);
 
       return true;
     }
@@ -424,6 +440,14 @@ namespace build2
         if (first)
           extra.module = move (m);
       }
+
+      // Configuration.
+      //
+      // config.qt.uic.options
+      //
+      // Note that we merge it into the corresponding qt.uic.* variable.
+      //
+      config::append_config<strings> (rs, rs, "qt.uic.options", nullptr);
 
       return true;
     }
