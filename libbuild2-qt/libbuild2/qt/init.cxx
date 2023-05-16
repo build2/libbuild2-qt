@@ -227,7 +227,7 @@ namespace build2
 
       // Configuration.
       //
-      if (first) // @@
+      if (first)
       {
         // config.qt.moc.options
         //
@@ -339,11 +339,14 @@ namespace build2
 
       // Configuration.
       //
-      // config.qt.rcc.options
-      //
-      // Note that we merge it into the corresponding qt.rcc.* variable.
-      //
-      config::append_config<strings> (rs, rs, "qt.rcc.options", nullptr);
+      if (first)
+      {
+        // config.qt.rcc.options
+        //
+        // Note that we merge it into the corresponding qt.rcc.* variable.
+        //
+        config::append_config<strings> (rs, rs, "qt.rcc.options", nullptr);
+      }
 
       return true;
     }
@@ -449,11 +452,14 @@ namespace build2
 
       // Configuration.
       //
-      // config.qt.uic.options
-      //
-      // Note that we merge it into the corresponding qt.uic.* variable.
-      //
-      config::append_config<strings> (rs, rs, "qt.uic.options", nullptr);
+      if (first)
+      {
+        // config.qt.uic.options
+        //
+        // Note that we merge it into the corresponding qt.uic.* variable.
+        //
+        config::append_config<strings> (rs, rs, "qt.uic.options", nullptr);
+      }
 
       return true;
     }
