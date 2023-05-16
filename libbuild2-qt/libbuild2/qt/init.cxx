@@ -108,6 +108,9 @@ namespace build2
 
       // Extract metadata.
       //
+      // @@ TODO: moc also has environment: need to incorporate this into
+      //          change tracking/hermetic.
+      //
       auto* ver (tgt != nullptr
                      ? &cast<string> (tgt->vars[exe_name + ".version"])
                      : nullptr);
@@ -224,11 +227,14 @@ namespace build2
 
       // Configuration.
       //
-      // config.qt.moc.options
-      //
-      // Note that we merge it into the corresponding qt.moc.* variable.
-      //
-      config::append_config<strings> (rs, rs, "qt.moc.options", nullptr);
+      if (first) // @@
+      {
+        // config.qt.moc.options
+        //
+        // Note that we merge it into the corresponding qt.moc.* variable.
+        //
+        config::append_config<strings> (rs, rs, "qt.moc.options", nullptr);
+      }
 
       return true;
     }
