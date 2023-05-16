@@ -1,0 +1,7 @@
+qt.version = $config.libbuild2_qt_tests.qt
+
+using qt.moc
+using qt.rcc
+using qt.uic
+
+./:
