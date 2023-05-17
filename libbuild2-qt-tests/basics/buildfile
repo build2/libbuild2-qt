@@ -4,4 +4,44 @@ using qt.moc
 using qt.rcc
 using qt.uic
 
-exe{driver}: cxx{driver}
+if ($qt.version == 5)
+  import libs = libQt5Core%lib{Qt5Core}
+else
+  import libs = libQt6Core%lib{Qt6Core}
+
+# Use RCC to generate a C++ header, a C++ source file, and an external
+# resource (binary data).
+#
+# The header is included by driver.cxx, the source file is compiled and linked
+# into the driver executable, and the external resource is loaded at run time.
+#
+# The driver tests that all of these resources are accessible.
+#
+
+exe{driver}: cxx{driver} $libs
+
+# Driver exectutable: dependencies on the RCC outputs.
+#
+exe{driver}: hxx{qrc_foo} cxx{qrc_bar}      # Embedded resources.
+
+# @@ TMP Any way to prevent exe{driver} from being linked when baz.rcc is out
+#    of date (given that it's loaded at runtime).
+#
+exe{driver}: file{baz.rcc}: include = adhoc # External resource.
+
+# RCC outputs: dependencies on their resource collection files and resources.
+#
+hxx{qrc_foo}: qrc{foo} file{foo.txt}
+
+cxx{qrc_bar}: qrc{bar} file{bar.txt}
+
+file{baz.rcc}: qrc{baz} file{baz.txt}
+{
+  qt.rcc.options = --binary
+}
+
+# Build options.
+#
+# $out_base is required to load the external resource.
+#
+cxx.poptions += "-I$out_base" -DOUT_BASE="\"$out_base\""
