@@ -12,6 +12,7 @@ namespace build2
       {
         const uint64_t version; // qt.version
         const exe&     moc;     // Moc compiler target.
+        const string&  csum;    // Moc compiler checksum.
       };
     }
   }

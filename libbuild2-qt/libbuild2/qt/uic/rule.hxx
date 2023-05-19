@@ -12,6 +12,7 @@ namespace build2
       {
         const uint64_t version; // qt.version
         const exe&     uic;     // Uic compiler target.
+        const string&  csum;    // Uic compiler checksum.
       };
     }
   }

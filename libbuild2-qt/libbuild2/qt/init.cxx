@@ -53,7 +53,10 @@ namespace build2
     // Note that the compiler name is currently assumed to match the module
     // name (e.g., `moc` and `qt.moc`).
     //
-    static const exe*
+    // Return the compiler target in first and the compiler checksum in
+    // second.
+    //
+    static pair<const exe*, const string*>
     import_exe (scope& rs,
                 const string& name, // Compiler name (`moc`/`rcc`/`uic`).
                 uint64_t qt_ver,    // Qt version (major).
@@ -154,7 +157,7 @@ namespace build2
       else
         rs.assign (v_tgt) = nullptr; // More direct indication.
 
-      return tgt;
+      return make_pair (tgt, sum);
     }
 
     // The `qt.moc.guess` module.
@@ -179,12 +182,15 @@ namespace build2
       uint64_t v (check_version (bs, loc, first));
       if (first)
       {
-        const exe* moc (import_exe (rs, "moc", v, loc, opt));
+        auto pr (import_exe (rs, "moc", v, loc, opt));
+
+        const exe* moc (pr.first);
+        const string* csum (pr.second);
 
         if (moc == nullptr)
           return false;
 
-        extra.set_module (new module (data {v, *moc}));
+        extra.set_module (new module (data {v, *moc, *csum}));
       }
       else
       {
@@ -291,12 +297,15 @@ namespace build2
       uint64_t v (check_version (bs, loc, first));
       if (first)
       {
-        const exe* rcc (import_exe (rs, "rcc", v, loc, opt));
+        auto pr (import_exe (rs, "rcc", v, loc, opt));
+
+        const exe* rcc (pr.first);
+        const string* csum (pr.second);
 
         if (rcc == nullptr)
           return false;
 
-        extra.set_module (new module (data {v, *rcc}));
+        extra.set_module (new module (data {v, *rcc, *csum}));
       }
       else
       {
@@ -404,12 +413,15 @@ namespace build2
 
       if (first)
       {
-        const exe* uic (import_exe (rs, "uic", v, loc, opt));
+        auto pr (import_exe (rs, "uic", v, loc, opt));
+
+        const exe* uic (pr.first);
+        const string* csum (pr.second);
 
         if (uic == nullptr)
           return false;
 
-        extra.set_module (new module (data {v, *uic}));
+        extra.set_module (new module (data {v, *uic, *csum}));
       }
       else
       {

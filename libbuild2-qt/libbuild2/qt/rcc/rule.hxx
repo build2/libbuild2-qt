@@ -12,6 +12,7 @@ namespace build2
       {
         const uint64_t version; // qt.version
         const exe&     rcc;     // Rcc compiler target.
+        const string&  csum;    // Rcc compiler checksum.
       };
     }
   }
