@@ -8,7 +8,10 @@
 #include <libbuild2/config/utility.hxx>
 
 #include <libbuild2/qt/moc/module.hxx>
+
 #include <libbuild2/qt/rcc/module.hxx>
+#include <libbuild2/qt/rcc/target.hxx>
+
 #include <libbuild2/qt/uic/module.hxx>
 
 namespace build2
@@ -385,6 +388,30 @@ namespace build2
 
         if (first)
           extra.module = move (m);
+      }
+
+      // Register target type and rules.
+      //
+      if (first)
+      {
+        module& m (extra.module_as<module> ());
+
+        //-
+        // Target types:
+        //
+        //   `qrc{}` -- Qt resource collection file.
+        //-
+        rs.insert_target_type<qrc> ();
+
+        //-
+        // Rules:
+        //
+        //   `qt.rcc.compile` -- Compile a Qt resource collection file
+        //                       identified as the first `qrc{}` prerequisite.
+        //-
+        rs.insert_rule<file> (perform_update_id,   "qt.rcc.compile", m);
+        rs.insert_rule<file> (perform_clean_id,    "qt.rcc.compile", m);
+        rs.insert_rule<file> (configure_update_id, "qt.rcc.compile", m);
       }
 
       return true;
