@@ -12,7 +12,7 @@ main ()
   QFile bar (":/bar.txt");
   assert (bar.exists ());
 
-  assert (QResource::registerResource (OUT_BASE "/baz.rcc"));
+  assert (QResource::registerResource (OUT_BASE"baz.rcc"));
   QFile baz (":/baz.txt");
   assert (baz.exists ());
 }

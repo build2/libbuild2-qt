@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libbuild2/types.hxx>   // @@ TODO: make sure in all headers.
+#include <libbuild2/types.hxx>
 #include <libbuild2/utility.hxx>
 
 #include <libbuild2/module.hxx>

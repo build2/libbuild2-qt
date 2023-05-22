@@ -28,8 +28,7 @@ namespace build2
             return true;
         }
 
-        // @@ TODO {  } -> {}
-        l4 ([&] {trace << "no resource collection file for target " << t;});
+        l4 ([&]{trace << "no resource collection file for target " << t;});
         return false;
       }
 
@@ -96,12 +95,12 @@ namespace build2
           // First should come the rule name/version.
           //
           if (dd.expect ("qt.rcc.compile 1") != nullptr)
-            l4 ([&] {trace << "rule mismatch forcing update of " << t;});
+            l4 ([&]{trace << "rule mismatch forcing update of " << t;});
 
           // Then the compiler checksum.
           //
           if (dd.expect (csum) != nullptr)
-            l4 ([&] {trace << "compiler mismatch forcing update of " << t;});
+            l4 ([&]{trace << "compiler mismatch forcing update of " << t;});
 
           // Then the options checksum.
           //
@@ -110,13 +109,13 @@ namespace build2
             append_options (cs, t, "qt.rcc.options");
 
             if (dd.expect (cs.string ()) != nullptr)
-              l4 ([&] {trace << "options mismatch forcing update of " << t;});
+              l4 ([&]{trace << "options mismatch forcing update of " << t;});
           }
 
           // Finally the .qrc input file.
           //
           if (dd.expect (s.path ()) != nullptr)
-            l4 ([&] {trace << "input file mismatch forcing update of " << t;});
+            l4 ([&]{trace << "input file mismatch forcing update of " << t;});
         }
 
         // Update if depdb mismatch.

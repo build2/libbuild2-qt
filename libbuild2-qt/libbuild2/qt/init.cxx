@@ -176,7 +176,7 @@ namespace build2
       using namespace moc;
 
       tracer trace ("qt::moc_guess_init");
-      l5 ([&] { trace << "for " << bs; });
+      l5 ([&]{trace << "for " << bs;});
 
       // Adjust module config.build save priority (code generator).
       //
@@ -220,7 +220,7 @@ namespace build2
       using namespace moc;
 
       tracer trace ("qt::moc_config_init");
-      l5 ([&] { trace << "for " << bs; });
+      l5 ([&]{trace << "for " << bs;});
 
       if (opt)
         fail (loc) << "qt.moc.config does not support optional loading";
@@ -261,7 +261,7 @@ namespace build2
       using namespace moc;
 
       tracer trace ("qt::moc_init");
-      l5 ([&] { trace << "for " << bs; });
+      l5 ([&]{trace << "for " << bs;});
 
       if (opt)
         fail (loc) << "qt.moc does not support optional loading";
@@ -291,7 +291,7 @@ namespace build2
       using namespace rcc;
 
       tracer trace ("qt::rcc_guess_init");
-      l5 ([&] { trace << "for " << bs; });
+      l5 ([&]{trace << "for " << bs;});
 
       // Adjust module config.build save priority (code generator).
       //
@@ -335,7 +335,7 @@ namespace build2
       using namespace rcc;
 
       tracer trace ("qt::rcc_config_init");
-      l5 ([&] { trace << "for " << bs; });
+      l5 ([&]{trace << "for " << bs;});
 
       if (opt)
         fail (loc) << "qt.rcc.config does not support optional loading";
@@ -376,7 +376,7 @@ namespace build2
       using namespace rcc;
 
       tracer trace ("qt::rcc_init");
-      l5 ([&] { trace << "for " << bs; });
+      l5 ([&]{trace << "for " << bs;});
 
       if (opt)
         fail (loc) << "qt.rcc does not support optional loading";
@@ -430,7 +430,7 @@ namespace build2
       using namespace uic;
 
       tracer trace ("qt::uic_guess_init");
-      l5 ([&] { trace << "for " << bs; });
+      l5 ([&]{trace << "for " << bs;});
 
       // Adjust module config.build save priority (code generator).
       //
@@ -475,7 +475,7 @@ namespace build2
       using namespace uic;
 
       tracer trace ("qt::uic_config_init");
-      l5 ([&] { trace << "for " << bs; });
+      l5 ([&]{trace << "for " << bs;});
 
       if (opt)
         fail (loc) << "qt.uic.config does not support optional loading";
@@ -516,7 +516,7 @@ namespace build2
       using namespace uic;
 
       tracer trace ("qt::uic_init");
-      l5 ([&] { trace << "for " << bs; });
+      l5 ([&]{trace << "for " << bs;});
 
       if (opt)
         fail (loc) << "qt.uic does not support optional loading";

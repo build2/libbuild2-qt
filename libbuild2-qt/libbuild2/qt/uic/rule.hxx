@@ -1,5 +1,8 @@
 #pragma once
 
+#include <libbuild2/types.hxx>
+#include <libbuild2/utility.hxx>
+
 namespace build2
 {
   namespace qt

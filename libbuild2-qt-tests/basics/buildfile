@@ -20,14 +20,11 @@ else
 
 exe{driver}: cxx{driver} $libs
 
-# Driver exectutable: dependencies on the RCC outputs.
+# Driver executable: dependencies on the RCC outputs.
 #
-exe{driver}: hxx{qrc_foo} cxx{qrc_bar}      # Embedded resources.
+exe{driver}: hxx{qrc_foo} cxx{qrc_bar}        # Embedded resources.
 
-# @@ TMP Any way to prevent exe{driver} from being linked when baz.rcc is out
-#    of date (given that it's loaded at runtime). Post-hoc?
-#
-exe{driver}: file{baz.rcc}: include = adhoc # External resource.
+exe{driver}: file{baz.rcc}: include = posthoc # External resource.
 
 # RCC outputs: dependencies on their resource collection files and resources.
 #
@@ -44,6 +41,8 @@ file{baz.rcc}: qrc{baz} file{baz.txt}
 #
 # $out_base is required to load the external resource.
 #
-# @@ representation, escape $representation($out_base)
+# Use $representation() to ensure a trailing separator and also escape
+# backslashes on Windows.
 #
-cxx.poptions += "-I$out_base" -DOUT_BASE="\"$out_base\""
+ob = $regex.replace($representation($out_base), '\\', '\\\\')
+cxx.poptions += "-I$out_base" -DOUT_BASE="\"$ob\""
