@@ -1,6 +1,7 @@
 #pragma once
 
 #include <libbuild2/types.hxx>
+#include <libbuild2/utility.hxx>
 
 #include <libbuild2/rule.hxx>
 
@@ -25,7 +26,8 @@ namespace build2
                                                  private virtual data
       {
       public:
-        compile_rule (data&& d) : data (move (d)) {}
+        explicit
+        compile_rule (data&& d): data (move (d)) {}
 
         virtual bool
         match (action, target&) const override;

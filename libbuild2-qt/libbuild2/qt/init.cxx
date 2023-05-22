@@ -57,7 +57,7 @@ namespace build2
     // name (e.g., `moc` and `qt.moc`).
     //
     // Return the compiler target in first and the compiler checksum in
-    // second.
+    // second or NULLs if not found.
     //
     static pair<const exe*, const string*>
     import_exe (scope& rs,

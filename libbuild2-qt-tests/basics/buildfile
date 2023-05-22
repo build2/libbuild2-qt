@@ -25,7 +25,7 @@ exe{driver}: cxx{driver} $libs
 exe{driver}: hxx{qrc_foo} cxx{qrc_bar}      # Embedded resources.
 
 # @@ TMP Any way to prevent exe{driver} from being linked when baz.rcc is out
-#    of date (given that it's loaded at runtime).
+#    of date (given that it's loaded at runtime). Post-hoc?
 #
 exe{driver}: file{baz.rcc}: include = adhoc # External resource.
 
@@ -43,5 +43,7 @@ file{baz.rcc}: qrc{baz} file{baz.txt}
 # Build options.
 #
 # $out_base is required to load the external resource.
+#
+# @@ representation, escape $representation($out_base)
 #
 cxx.poptions += "-I$out_base" -DOUT_BASE="\"$out_base\""

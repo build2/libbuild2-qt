@@ -6,8 +6,6 @@ namespace build2
   {
     namespace rcc
     {
-      // @@ TMP extern? Ignored if there's an initializer.
-      //
       extern const char qrc_ext[] = "qrc";
       const target_type qrc::static_type
       {

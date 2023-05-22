@@ -28,7 +28,8 @@ namespace build2
             return true;
         }
 
-        l4 ([&] { trace << "no resource collection file for target " << t; });
+        // @@ TODO {  } -> {}
+        l4 ([&] {trace << "no resource collection file for target " << t;});
         return false;
       }
 
@@ -95,25 +96,27 @@ namespace build2
           // First should come the rule name/version.
           //
           if (dd.expect ("qt.rcc.compile 1") != nullptr)
-            l4 ([&] { trace << "rule mismatch forcing update of " << t; });
+            l4 ([&] {trace << "rule mismatch forcing update of " << t;});
 
           // Then the compiler checksum.
           //
           if (dd.expect (csum) != nullptr)
-            l4 ([&] { trace << "compiler mismatch forcing update of " << t; });
+            l4 ([&] {trace << "compiler mismatch forcing update of " << t;});
 
           // Then the options checksum.
           //
-          sha256 cs;
-          append_options (cs, t, "qt.rcc.options");
+          {
+            sha256 cs;
+            append_options (cs, t, "qt.rcc.options");
 
-          if (dd.expect (cs.string ()) != nullptr)
-            l4 ([&] { trace << "options mismatch forcing update of " << t; });
+            if (dd.expect (cs.string ()) != nullptr)
+              l4 ([&] {trace << "options mismatch forcing update of " << t;});
+          }
 
           // Finally the .qrc input file.
           //
           if (dd.expect (s.path ()) != nullptr)
-            l4 ([&] { trace << "input file mismatch forcing update of " << t; });
+            l4 ([&] {trace << "input file mismatch forcing update of " << t;});
         }
 
         // Update if depdb mismatch.
@@ -151,6 +154,8 @@ namespace build2
         if (!find_options ({"--name", "-name"}, args) &&
             !find_option_prefixes ({"--name=", "-name="}, args))
         {
+          // Note that rcc will sanitize the name if necessary.
+          //
           args.push_back ("--name");
           args.push_back (s.name.c_str ());
         }

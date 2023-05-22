@@ -1,5 +1,8 @@
 #pragma once
 
+#include <libbuild2/type.hxx>
+#include <libbuild2/utility.hxx>
+
 #include <libbuild2/module.hxx>
 
 #include <libbuild2/qt/export.hxx>
