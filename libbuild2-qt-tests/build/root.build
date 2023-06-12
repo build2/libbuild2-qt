@@ -1,3 +1,5 @@
+using in
+
 config [uint64] config.libbuild2_qt_tests.qt
 
 if! $defined(config.libbuild2_qt_tests.qt)

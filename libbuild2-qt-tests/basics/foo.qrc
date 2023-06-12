@@ -1,5 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>foo.txt</file>
+        <file>foo2.txt</file>
+        <file>foo3.txt</file>
     </qresource>
 </RCC>

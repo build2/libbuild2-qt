@@ -26,16 +26,46 @@ exe{driver}: hxx{qrc_foo} cxx{qrc_bar}        # Embedded resources.
 
 exe{driver}: file{baz.rcc}: include = posthoc # External resource.
 
-# RCC outputs: dependencies on their resource collection files and resources.
+# A generated resource.
 #
-hxx{qrc_foo}: qrc{foo} file{foo.txt}
+file{bar.txt}: in{bar}
 
+# Note that bar.qrc is generated only in order for it to be placed in the same
+# directory as the generated resource, which is necessary because rcc
+# interprets relative resource paths as relative to the qrc input file. (One
+# could otherwise use absolute resource paths but then the driver program
+# would also have to be updated to use them and the qrc file would still need
+# to be generated.)
+#
+qrc{bar}: in{bar}
+
+# RCC outputs: dependencies on their resource collection files.
+#
+hxx{qrc_foo}: qrc{foo} # Note: declares 3 resources.
+
+# Note that generated resources (bar.txt, in this case) must be explicitly
+# declared as prerequisites (whereas regular, non-generated resources will be
+# discovered and updated automatically).
+#
 cxx{qrc_bar}: qrc{bar} file{bar.txt}
 
-file{baz.rcc}: qrc{baz} file{baz.txt}
+file{baz.rcc}: qrc{baz}
 {
   qt.rcc.options = --binary
 }
+
+# Ensure resources are distributed.
+#
+# @@ TMP Without `include = adhoc` this causes `clean update` to fail with
+#        "error: file foo.txt has non-noop recipe". file{foo.txt} gets matched
+#        but the others not (race), then verify_existing_file() fails with
+#        "has non-noop recipe".
+#
+# @@ TODO Also fix build2-packaging/Qt{5,6}.
+#
+exe{driver}: file{foo.txt foo2.txt foo3.txt     \
+                  bar.txt                       \
+                  baz.txt}: include = adhoc
 
 # Build options.
 #
