@@ -35,8 +35,10 @@ namespace build2
         virtual recipe
         apply (action, target&) const override;
 
+        struct match_data;
+
         target_state
-        perform_update (action, const target&) const;
+        perform_update (action, const target&, match_data&) const;
       };
     }
   }
