@@ -12,15 +12,19 @@
 
 #include <libbuild2/qt/rcc/target.hxx>
 
-// @@ TMP Should we support multiple qrc{} inputs?
+// @@ TODO: support multiple qrc{} inputs if/when have a use-case. Note that
+//          in such a case the output goes into the same file.
 //
-// @@ TMP We can switch to non-byproduct mode by using rcc's --list option
-//        (which prints just the resource paths, one per line) instead of
-//        --depfile.
+// @@ TODO: We could potentially switch to the non-byproduct approach using
+//          rcc's --list option (which prints just the resource paths, one per
+//          line). Note, however, that it does not distinguish non-existent
+//          files (which would be the reason to switch to non-byproduct) so we
+//          would have to handle this ourselves (probably by just stat'ing
+//          them). Maybe/later.
 //
 namespace build2
 {
-  using dyndep = dyndep_rule;
+  using dyndep = dyndep_rule; // @@ Inherit from dyndep_rule.
 
   namespace qt
   {
@@ -223,11 +227,13 @@ namespace build2
               // Note that static prerequisites are never written to the
               // depdb.
 
+              // @@ Use inject_existing_file().
+
               // Ensure that the resource is not generated and then inject it
               // as a prerequisite target.
               //
               // This code is essentially inject_existing_file() without the
-              // update.
+              // update during match.
               //
               if (try_match_sync (a, *ft).first)
               {
@@ -240,9 +246,9 @@ namespace build2
                 //
                 if (rf == nullptr || *rf != &noop_action)
                 {
-                  fail << "resource " << *ft << " has non-noop recipe"
-                       << info
-                       << "consider listing it as static prerequisite of " << t;
+                  fail << "resource " << *ft << " has non-noop recipe" <<
+                    info << "consider listing it as static prerequisite of "
+                       << t;
                 }
 
                 // Add to our prerequisite target list.
@@ -260,8 +266,7 @@ namespace build2
             [&t] (const diag_record& dr)
             {
               if (verb != 0)
-                dr << info << "while extracting dynamic dependencies for "
-                   << t;
+                dr << info << "while extracting dynamic dependencies for " << t;
             });
 
           // Read the resource paths from the depdb.
@@ -287,15 +292,6 @@ namespace build2
             // one, we know how many to skip when updating from rcc's depfile
             // later.
             //
-            // @@ TMP This (invalid line) is probably rare so perhaps writing
-            //        all resource paths every time wouldn't be so bad? In
-            //        which case it would be nice if we could take the depdb
-            //        reopen state -- without closing it -- right after
-            //        reading the qrc path from it which would thus point to
-            //        the first resource path. Then we wouldn't need to do any
-            //        skipping. But I suppose that goes against the intended
-            //        depdb semantics.
-            //
             md.skip_count++;
 
             // If a resource does not exist there is nothing we can do: the
@@ -309,15 +305,15 @@ namespace build2
             {
               update = true;
 
+              // @@ Got back to standard approach.
+
               diag_record dr;
               dr << error << "resource " << *l << " does not exist";
 
-              // @@ TMP ctx.match_only?
-              //
-              // @@ TMP ctx.dry_run or ctx.dry_run_option?
-              //
-              if (!ctx.dry_run)
+              if (!ctx.match_only && !ctx.dry_run_options)
                 dr << info << "failure deferred to rcc diagnostics";
+              else
+                dr << endf;
             }
           }
         }
