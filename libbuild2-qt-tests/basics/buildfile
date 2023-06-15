@@ -43,9 +43,9 @@ qrc{bar}: in{bar}
 #
 hxx{qrc_foo}: qrc{foo} # Note: declares 3 resources.
 
-# Note that generated resources (bar.txt, in this case) must be explicitly
-# declared as prerequisites (whereas regular, non-generated resources will be
-# discovered and updated automatically).
+# Note that generated resources (bar.txt, in this case) must be statically
+# declared as prerequisites whereas regular, non-generated resources will be
+# discovered and updated automatically.
 #
 cxx{qrc_bar}: qrc{bar} file{bar.txt}
 

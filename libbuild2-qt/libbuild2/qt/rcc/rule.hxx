@@ -4,6 +4,7 @@
 #include <libbuild2/utility.hxx>
 
 #include <libbuild2/rule.hxx>
+#include <libbuild2/dyndep.hxx>
 
 #include <libbuild2/qt/export.hxx>
 
@@ -23,7 +24,8 @@ namespace build2
       };
 
       class LIBBUILD2_QT_SYMEXPORT compile_rule: public simple_rule,
-                                                 private virtual data
+                                                 private virtual data,
+                                                 private dyndep_rule
       {
       public:
         explicit
