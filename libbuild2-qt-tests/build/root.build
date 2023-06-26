@@ -21,6 +21,9 @@ cxx{*}: extension = cxx
 #
 hxx{*}: cxx.importable = true
 
+if ($cxx.id.type == 'clang' && $cxx.version.major >= 15)
+  cxx.coptions += -Wno-unqualified-std-cast-call
+
 # Every exe{} in this project is by default a test.
 #
 exe{*}: test = true
