@@ -11,5 +11,7 @@ cxx{*}: extension = cxx
 #
 hxx{*}: cxx.importable = true
 
-if ($cxx.id.type == 'clang' && $cxx.version.major >= 15)
+if ($cxx.id == 'gcc' && $cxx.version.major >= 13)
+  cxx.coptions += -Wno-dangling-reference
+elif ($cxx.id.type == 'clang' && $cxx.version.major >= 15)
   cxx.coptions += -Wno-unqualified-std-cast-call
