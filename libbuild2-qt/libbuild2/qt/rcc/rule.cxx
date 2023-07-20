@@ -181,11 +181,12 @@ namespace build2
         //
         // Note that, if the qrc{} input has changed, its set of declared
         // resource paths is likely to have changed, otherwise the entire set
-        // is still valid (a resource cannot include other
-        // resources). Therefore resource states have no bearing on the set of
-        // resource paths in the depdb and thus they don't strictly need to be
+        // is still valid (a resource cannot include other resources).
+        // Therefore resource states have no bearing on the set of resource
+        // paths in the depdb and thus they strictly speaking don't need to be
         // updated before checking the depdb. However we do update them now
-        // for the sake of simplicity and consistency with existing code.
+        // for the sake of simplicity and consistency with the general
+        // approach of using the dyndep_rule mechanisms.
         //
         {
           auto& pts (t.prerequisite_targets[a]);
@@ -211,23 +212,16 @@ namespace build2
           auto add = [&trace, a, &bs, &t, mt] (path fp) -> optional<bool>
           {
             if (const build2::file* ft = enter_file (
-                  trace, "file",
+                  trace, "resource file",
                   a, bs, t,
                   fp, true /* cache */, true /* normalized */,
                   nullptr /* map_ext */, file::static_type).first)
             {
               // Note that static prerequisites are never written to the
               // depdb.
-
-              // @@ TMP I think the inject_file() comment is wrong:
-              //
-              //    Return the indication of whether it [the prerequisite] has
-              //    changed or, if the passed timestamp is not
-              //    timestamp_unknown, is older than this timestamp. [Should
-              //    this not be "is newer than this timestamp"?]
               //
               if (optional<bool> u = inject_existing_file (
-                    trace, "file",
+                    trace, "resource file",
                     a, t, 0 /* pts_n */,
                     *ft, mt,
                     false /* fail */))
@@ -265,14 +259,14 @@ namespace build2
             if (l->empty ()) // Done, nothing changed.
               break;
 
-            // Count valid resource path lines so that, if we encounter an
-            // invalid one, we know how many to skip when updating the depdb
-            // from rcc's depfile later.
-            //
-            md.skip_count++;
-
             if (optional<bool> r = add (path (*l)))
             {
+              // Count valid resource path lines so that, if we encounter an
+              // invalid one, we know how many to skip when updating the depdb
+              // from rcc's depfile later.
+              //
+              md.skip_count++;
+
               if (*r)
                 u = true;
             }
@@ -281,29 +275,8 @@ namespace build2
               // Resource does not exist. Invalidate this line and trigger
               // update.
               //
-              // @@ TMP Skipping won't work in this case because rcc will fail
-              //        every time and then the depdb will be newer than the
-              //        target on every subsequent run until the missing
-              //        resource has been restored. So this loop will not run
-              //        again until that happens; only the
-              //        depfile-reading/depdb-writing loop in perform_update()
-              //        will run, and then skip_count will always be zero. So
-              //        when rcc finally succeeds the set of resource paths
-              //        will be overwritten from start to end.
-              //
               dd.write ();
               u = true;
-
-              // @@ TMP Wasn't sure whether we wanted to keep this part or
-              //        not.
-              //
-              diag_record dr;
-              dr << error << "resource " << *l << " does not exist";
-
-              if (!ctx.match_only && !ctx.dry_run_option)
-                dr << info << "failure deferred to rcc diagnostics";
-              else
-                dr << endf;
             }
           }
         }
@@ -318,7 +291,7 @@ namespace build2
 
         // Pass on base scope and update/mtime.
         //
-        md.bs = &bs;
+        md.bs = &bs; // @@ Drop.
         md.mt = u ? timestamp_nonexistent : mt;
 
         return md;
@@ -343,11 +316,15 @@ namespace build2
         //
         const qrc* s;
         {
+          // Note: while strictly speaking we don't need the mtime check, this
+          // is the most convenient version of execute_prerequisites().
+          //
           auto pr (execute_prerequisites<qrc> (a, t, md.mt));
 
           if (pr.first)
             return *pr.first; // No need to update.
 
+          assert (md.mt == timestamp_nonexistent);
           s = &pr.second;
         }
 
@@ -425,10 +402,13 @@ namespace build2
                       a, &bs, &t, pts_n = md.pts_n,
                       &dd, &skip] (path fp)
           {
-            normalize_external (fp, "file");
+            // @@ I don't think we need normalize_external() here since
+            //    the resources will normally be within the project.
+            //
+            normalize_external (fp, "resource file");
 
             if (const build2::file* ft = find_file (
-                trace, "file",
+                trace, "resource file",
                 a, bs, t,
                 fp, false /* cache */, true /* normalized */,
                 true /* dynamic */,
@@ -454,7 +434,7 @@ namespace build2
 
               // Verify it has noop recipe.
               //
-              verify_existing_file (trace, "file", a, t, pts_n, *ft);
+              verify_existing_file (trace, "resource file", a, t, pts_n, *ft);
             }
 
             dd.write (fp);
