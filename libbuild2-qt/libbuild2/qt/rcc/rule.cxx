@@ -39,7 +39,6 @@ namespace build2
 
         const size_t pts_n; // Number of static prerequisites.
 
-        const scope* bs;
         timestamp mt;
 
         const compile_rule& rule;
@@ -289,9 +288,8 @@ namespace build2
         else
           md.dd = dd.close_to_reopen ();
 
-        // Pass on base scope and update/mtime.
+        // Pass on update/mtime.
         //
-        md.bs = &bs; // @@ Drop.
         md.mt = u ? timestamp_nonexistent : mt;
 
         return md;
@@ -402,10 +400,19 @@ namespace build2
                       a, &bs, &t, pts_n = md.pts_n,
                       &dd, &skip] (path fp)
           {
-            // @@ I don't think we need normalize_external() here since
-            //    the resources will normally be within the project.
+            // Note that unlike prerequisites, here we don't need
+            // normalize_external() since we expect the targets to be within
+            // this project.
             //
-            normalize_external (fp, "resource file");
+            try
+            {
+              fp.normalize ();
+            }
+            catch (const invalid_path&)
+            {
+              fail << "invalid resource file target path '"
+                   << fp.string () << "'";
+            }
 
             if (const build2::file* ft = find_file (
                 trace, "resource file",

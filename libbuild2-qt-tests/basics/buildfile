@@ -56,13 +56,6 @@ file{baz.rcc}: qrc{baz}
 
 # Ensure resources are distributed.
 #
-# @@ TMP Without `include = adhoc` this causes `clean update` to fail with
-#        "error: file foo.txt has non-noop recipe". file{foo.txt} gets matched
-#        but the others not (race), then verify_existing_file() fails with
-#        "has non-noop recipe".
-#
-# @@ TODO Also fix build2-packaging/Qt{5,6}.
-#
 exe{driver}: file{foo.txt foo2.txt foo3.txt     \
                   bar.txt                       \
                   baz.txt}: include = adhoc
