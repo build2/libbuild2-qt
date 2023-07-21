@@ -13,6 +13,7 @@
 #include <libbuild2/qt/rcc/target.hxx>
 
 #include <libbuild2/qt/uic/module.hxx>
+#include <libbuild2/qt/uic/target.hxx>
 
 namespace build2
 {
@@ -528,6 +529,30 @@ namespace build2
 
         if (first)
           extra.module = move (m);
+      }
+
+      // Register target type and rules.
+      //
+      if (first)
+      {
+        module& m (extra.module_as<module> ());
+
+        //-
+        // Target types:
+        //
+        //   `ui{}` -- Qt Designer UI file.
+        //-
+        rs.insert_target_type<ui> ();
+
+        //-
+        // Rules:
+        //
+        //   `qt.uic.compile` -- Compile a Qt Designer UI file identified as
+        //                       the first `ui{}` prerequisite.
+        //-
+        rs.insert_rule<file> (perform_update_id,   "qt.uic.compile", m);
+        rs.insert_rule<file> (perform_clean_id,    "qt.uic.compile", m);
+        rs.insert_rule<file> (configure_update_id, "qt.uic.compile", m);
       }
 
       return true;
