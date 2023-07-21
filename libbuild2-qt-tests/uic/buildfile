@@ -1,0 +1,22 @@
+qt.version = $config.libbuild2_qt_tests.qt
+
+using qt.uic
+
+if ($qt.version == 5)
+  import libs = libQt5Widgets%lib{Qt5Widgets}
+else
+  import libs = libQt6Widgets%lib{Qt6Widgets}
+
+# Source file and libraries.
+#
+exe{driver}: cxx{driver} $libs
+
+# A uic-generated header.
+#
+exe{driver}: hxx{ui_foo}
+
+# Generate ui_foo.hxx from foo.ui.
+#
+hxx{ui_foo}: ui{foo}
+
+cxx.poptions += "-I$out_base"
