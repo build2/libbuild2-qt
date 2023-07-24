@@ -7,6 +7,8 @@
 
 #include <libbuild2/config/utility.hxx>
 
+#include <libbuild2/cxx/target.hxx>
+
 #include <libbuild2/qt/moc/module.hxx>
 
 #include <libbuild2/qt/rcc/module.hxx>
@@ -411,7 +413,7 @@ namespace build2
         //                       identified as the first `qrc{}` prerequisite.
         //
         // Note: the rule is registered for a file since the output could be a
-        // binary file rather than C++ source file.
+        // binary file, a C++ header, or a C++ source file.
         //-
         rs.insert_rule<file> (perform_update_id,   "qt.rcc.compile", m);
         rs.insert_rule<file> (perform_clean_id,    "qt.rcc.compile", m);
@@ -525,6 +527,12 @@ namespace build2
       if (opt)
         fail (loc) << "qt.uic does not support optional loading";
 
+      // Make sure the cxx module has been loaded since we need its hxx{}
+      // target type.
+      //
+      if (first && !cast_false<bool> (rs["cxx.loaded"]))
+        fail (loc) << "cxx module must be loaded before qt.uic module";
+
       // Load qt.uic.config and share its module instance as ours.
       //
       {
@@ -553,12 +561,9 @@ namespace build2
         //   `qt.uic.compile` -- Compile a Qt Designer UI file identified as
         //                       the first `ui{}` prerequisite.
         //-
-
-        // @@ <hxx>
-
-        rs.insert_rule<file> (perform_update_id,   "qt.uic.compile", m);
-        rs.insert_rule<file> (perform_clean_id,    "qt.uic.compile", m);
-        rs.insert_rule<file> (configure_update_id, "qt.uic.compile", m);
+        rs.insert_rule<cxx::hxx> (perform_update_id,   "qt.uic.compile", m);
+        rs.insert_rule<cxx::hxx> (perform_clean_id,    "qt.uic.compile", m);
+        rs.insert_rule<cxx::hxx> (configure_update_id, "qt.uic.compile", m);
       }
 
       return true;

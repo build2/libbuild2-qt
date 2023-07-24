@@ -1,10 +1,12 @@
 #include "ui_foo.hxx"
 
-// @@ Show unless option.
-
 int
 main (int argc, char** argv)
 {
+  // If true, show the UI.
+  //
+  bool show (argc < 2 || QString (argv[1]) != "--no-show-ui");
+
   QApplication app (argc, argv);
 
   QWidget widget;
@@ -12,5 +14,5 @@ main (int argc, char** argv)
   ui.setupUi (&widget);
   widget.show ();
 
-  return 0;
+  return show ? app.exec () : 0;
 }

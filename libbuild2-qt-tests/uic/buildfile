@@ -10,6 +10,11 @@ else
 # Source file and libraries.
 #
 exe{driver}: cxx{driver} $libs
+{
+  # Don't show the UI.
+  #
+  test.options = --no-show-ui
+}
 
 # A uic-generated header.
 #

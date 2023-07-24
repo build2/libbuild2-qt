@@ -2,6 +2,7 @@ intf_libs = # Interface dependencies.
 impl_libs = # Implementation dependencies.
 
 import impl_libs += build2%lib{build2} # Implied interface dependency.
+import impl_libs += build2%lib{build2-cxx}
 
 lib{build2-qt}: {hxx ixx txx cxx}{**} $impl_libs $intf_libs
 
