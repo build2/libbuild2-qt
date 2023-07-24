@@ -1,5 +1,7 @@
 #include "ui_foo.hxx"
 
+// @@ Show unless option.
+
 int
 main (int argc, char** argv)
 {

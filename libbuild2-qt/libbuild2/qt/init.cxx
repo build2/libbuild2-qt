@@ -409,6 +409,9 @@ namespace build2
         //
         //   `qt.rcc.compile` -- Compile a Qt resource collection file
         //                       identified as the first `qrc{}` prerequisite.
+        //
+        // Note: the rule is registered for a file since the output could be a
+        // binary file rather than C++ source file.
         //-
         rs.insert_rule<file> (perform_update_id,   "qt.rcc.compile", m);
         rs.insert_rule<file> (perform_clean_id,    "qt.rcc.compile", m);
@@ -550,6 +553,9 @@ namespace build2
         //   `qt.uic.compile` -- Compile a Qt Designer UI file identified as
         //                       the first `ui{}` prerequisite.
         //-
+
+        // @@ <hxx>
+
         rs.insert_rule<file> (perform_update_id,   "qt.uic.compile", m);
         rs.insert_rule<file> (perform_clean_id,    "qt.uic.compile", m);
         rs.insert_rule<file> (configure_update_id, "qt.uic.compile", m);
