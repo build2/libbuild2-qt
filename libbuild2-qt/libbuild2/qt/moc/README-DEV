@@ -1,0 +1,35 @@
+1. File type conventions
+
+The following is considered conventional based on the recommendations of the
+Qt project documentation at https://doc.qt.io/qt-6/moc.html and the CMake
+documentation at https://cmake.org/cmake/help/latest/prop_tgt/AUTOMOC.html and
+https://cmake.org/cmake/help/latest/manual/cmake-qt.7.html.
+
+- Compilation of foo.hxx produces moc_foo.cxx.
+
+- Compilation of foo.cxx produces foo.moc.
+
+- moc_foo.cxx is compiled
+
+  The current convention is apparently that moc_*.cxx should be compiled.
+
+  A potential complication of inclusion is that it can result in one generated
+  file depending on another generated file. If not compiled, moc_foo.cxx would
+  have to be included by foo.cxx, making foo.cxx depend on moc_foo.cxx. If, in
+  addition, foo.cxx needs to be moc'd, then foo.moc would end up depending on
+  moc_foo.cxx transitively, via foo.cxx.
+
+  It's worth noting that, in apparent contradiction of their own
+  recommendations, the Qt codebase includes the majority of its
+  moc_*.cpp's. Their reasons appear to be better codegen and compiler
+  warnings: see the series of commits starting with
+  7d4b480be360d3d25f059c6edbef7d2e7f74da8f in dev:
+  https://code.qt.io/cgit/qt/qtbase.git/commit/?id=7d4b480be360d3d25f059c6edbef7d2e7f74da8f.
+
+- foo.moc is included
+
+  foo.moc has to be included (most likely by foo.cxx) because, if it were
+  compiled, it would be implementing things declared in foo.cxx so it would
+  have to include foo.cxx, but then we'd get "multiple definitions" errors.
+  (Of course, compiling foo.moc but not foo.cxx is one potential workaround
+  for such cases but this seems suboptimal and unlikely to be used.)
