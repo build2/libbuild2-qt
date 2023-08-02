@@ -13,10 +13,12 @@ namespace build2
   {
     namespace moc
     {
-      class module: public build2::module, public virtual data
+      class module: public build2::module,
+                    public virtual data,
+                    public compile_rule
       {
       public:
-        explicit module (data&& d) : data (move (d)) {}
+        explicit module (data&& d): data (move (d)), compile_rule (move (d)) {}
       };
     }
   }

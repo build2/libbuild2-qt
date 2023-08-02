@@ -10,6 +10,7 @@
 #include <libbuild2/cxx/target.hxx>
 
 #include <libbuild2/qt/moc/module.hxx>
+#include <libbuild2/qt/moc/target.hxx>
 
 #include <libbuild2/qt/rcc/module.hxx>
 #include <libbuild2/qt/rcc/target.hxx>
@@ -269,6 +270,12 @@ namespace build2
       if (opt)
         fail (loc) << "qt.moc does not support optional loading";
 
+      // Make sure the cxx module has been loaded since we need its ixx{} and
+      // cxx{} target types.
+      //
+      if (first && !cast_false<bool> (rs["cxx.loaded"]))
+        fail (loc) << "cxx module must be loaded before qt.moc module";
+
       // Load qt.moc.config and share its module instance as ours.
       //
       {
@@ -276,6 +283,35 @@ namespace build2
 
         if (first)
           extra.module = move (m);
+      }
+
+      // Register target types and rules.
+      //
+      if (first)
+      {
+        module& m (extra.module_as<module> ());
+
+        //-
+        // Target types:
+        //
+        //   `moc.cxx{}` -- C++ source file generated from C++ header.
+        //   `moc.moc{}` -- C++ source file generated from C++ source file.
+        //-
+        rs.insert_target_type<moc_cxx> ();
+        rs.insert_target_type<moc_moc> ();
+
+        //-
+        // Rules:
+        //
+        //   `qt.moc.compile` -- Compile a C++ header or source file.
+        //-
+        rs.insert_rule<moc_cxx> (perform_update_id,   "qt.moc.compile", m);
+        rs.insert_rule<moc_cxx> (perform_clean_id,    "qt.moc.compile", m);
+        rs.insert_rule<moc_cxx> (configure_update_id, "qt.moc.compile", m);
+
+        rs.insert_rule<moc_moc> (perform_update_id,   "qt.moc.compile", m);
+        rs.insert_rule<moc_moc> (perform_clean_id,    "qt.moc.compile", m);
+        rs.insert_rule<moc_moc> (configure_update_id, "qt.moc.compile", m);
       }
 
       return true;
