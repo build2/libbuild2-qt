@@ -34,6 +34,8 @@ namespace build2
       // (e.g., foo.cxx -> foo.moc) which should be included (compilation can
       // be made to work but is not fully supported).
       //
+      // @@ TODO: change to axx{} if we end up having it.
+      //
       class LIBBUILD2_QT_SYMEXPORT moc_moc: public cxx::ixx
       {
       public:
