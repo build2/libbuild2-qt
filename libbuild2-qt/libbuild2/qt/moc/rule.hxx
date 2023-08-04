@@ -32,7 +32,13 @@ namespace build2
         compile_rule (data&& d): data (move (d)) {}
 
         virtual bool
-        match (action, target&) const override;
+        match (action, target&) const override
+        {
+          return false;
+        }
+
+        virtual bool
+        match (action, target&, const string&, match_extra&) const override;
 
         virtual recipe
         apply (action, target&) const override;

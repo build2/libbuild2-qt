@@ -43,38 +43,65 @@ namespace build2
         }
       };
 
-      // Return true if t is a target of type T and has at least one static
-      // prerequisite of type P.
+      // Return true if t has a prerequisite of type P with the specified
+      // name, or any name if n is null.
       //
-      template <typename T, typename P>
+      template <typename P>
       static bool
-      match_impl (const char* what, action a, target& t)
+      have_prereq (action a, const target& t, const char* n)
       {
-        tracer trace ("qt::moc::compile_rule::match");
-
-        if (!t.is_a<T> ())
-          return false;
-
-        // Confirm we have a prerequisite of the right type.
-        //
         for (prerequisite_member p: group_prerequisite_members (a, t))
         {
           // If excluded or ad hoc, then don't factor it into our tests.
           //
           if (include (a, t, p) == include_type::normal)
-            if (p.is_a<P> ())
+            if (p.is_a<P> () && (n == nullptr || p.name () == n))
               return true;
         }
 
-        l4 ([&]{trace << "no " << what << " for target " << t;});
         return false;
       }
 
-      bool compile_rule::
-      match (action a, target& t) const
+      bool
+      compile_rule::match (action a,
+                           target& t,
+                           const string& hint,
+                           match_extra&) const
       {
-        return match_impl<moc_cxx, cxx::hxx> ("header", a, t) ||
-               match_impl<moc_moc, cxx::cxx> ("source file", a, t);
+        tracer trace ("qt::moc::compile_rule::match");
+
+        if (t.is_a<cxx::cxx> ())
+        {
+          // Enforce the moc naming conventions (cxx{moc_foo} from hxx{foo})
+          // unless we have a rule hint, in which case we accept any filenames
+          // and take the first hxx{} prerequisite as the input file.
+          //
+          const char* pn; // Prerequisite name.
+
+          if (hint.empty ())
+          {
+            if (t.name.find ("moc_") == string::npos)
+              return false;
+
+            pn = t.name.c_str () + 4;
+          }
+          else
+            pn = nullptr;
+
+          if (have_prereq<cxx::hxx> (a, t, pn))
+            return true;
+
+          l4 ([&]{trace << "no header for target " << t;});
+        }
+        else if (t.is_a<qt::moc::moc> ())
+        {
+          if (have_prereq<cxx::cxx> (a, t, t.name.c_str ()))
+            return true;
+
+          l4 ([&]{trace << "no source file for target " << t;});
+        }
+
+        return false;
       }
 
       // @@ TODO Handle plugin metadata json files specified via
@@ -360,23 +387,21 @@ namespace build2
         path sn (s->path ().leaf ());         // Header/source file name.
         path depfile (relo.string () + ".t"); // Depfile path.
 
-        // If we're generating a moc.cxx{}, pass -f to override the path with
+        // If we're generating a cxx{}, pass -f to override the path with
         // which the input header will be #include'd, which is relative to the
-        // output directory, with just the name of the input file. (Note that
-        // this will work whether this target is compiled or included assuming
-        // the input header employs include guards, as is typical.)
+        // output directory, with just the name of the input file.
         //
-        // Otherwise, if we're generating a moc.moc{} -- which is included --
-        // pass -i to prevent any #include directive from being generated for
-        // the input source file (otherwise we'd get multiple definition
-        // errors if the input source file is also compiled, as is typical).
+        // Otherwise, if we're generating a moc{} -- which is included -- pass
+        // -i to prevent any #include directive from being generated for the
+        // input source file (otherwise we'd get multiple definitions errors
+        // if the input source file is also compiled, as is typical).
         //
-        if (t.is_a<moc_cxx> ())
+        if (t.is_a<cxx::cxx> ())
         {
           args.push_back ("-f");
           args.push_back (sn.string ().c_str ());
         }
-        else if (t.is_a<moc_moc> ())
+        else if (t.is_a<qt::moc::moc> ())
           args.push_back ("-i");
 
         // Depfile path.
@@ -421,7 +446,7 @@ namespace build2
           // Note that fp is expected to be absolute.
           //
           auto add = [&trace,
-                      a, &bs, &t, s, pts_n = md.pts_n,
+                      a, &bs, &t, pts_n = md.pts_n,
                       &dd, &skip] (path fp)
           {
             normalize_external (fp, "header");

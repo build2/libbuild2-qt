@@ -270,8 +270,8 @@ namespace build2
       if (opt)
         fail (loc) << "qt.moc does not support optional loading";
 
-      // Make sure the cxx module has been loaded since we need its ixx{} and
-      // cxx{} target types.
+      // Make sure the cxx module has been loaded since we need its target
+      // types.
       //
       if (first && !cast_false<bool> (rs["cxx.loaded"]))
         fail (loc) << "cxx module must be loaded before qt.moc module";
@@ -294,24 +294,22 @@ namespace build2
         //-
         // Target types:
         //
-        //   `moc.cxx{}` -- C++ source file generated from C++ header.
-        //   `moc.moc{}` -- C++ source file generated from C++ source file.
+        //   `moc{}` -- C++ source file generated from C++ source file.
         //-
-        rs.insert_target_type<moc_cxx> ();
-        rs.insert_target_type<moc_moc> ();
+        rs.insert_target_type<qt::moc::moc> ();
 
         //-
         // Rules:
         //
         //   `qt.moc.compile` -- Compile a C++ header or source file.
         //-
-        rs.insert_rule<moc_cxx> (perform_update_id,   "qt.moc.compile", m);
-        rs.insert_rule<moc_cxx> (perform_clean_id,    "qt.moc.compile", m);
-        rs.insert_rule<moc_cxx> (configure_update_id, "qt.moc.compile", m);
+        rs.insert_rule<cxx::cxx> (perform_update_id,   "qt.moc.compile", m);
+        rs.insert_rule<cxx::cxx> (perform_clean_id,    "qt.moc.compile", m);
+        rs.insert_rule<cxx::cxx> (configure_update_id, "qt.moc.compile", m);
 
-        rs.insert_rule<moc_moc> (perform_update_id,   "qt.moc.compile", m);
-        rs.insert_rule<moc_moc> (perform_clean_id,    "qt.moc.compile", m);
-        rs.insert_rule<moc_moc> (configure_update_id, "qt.moc.compile", m);
+        rs.insert_rule<qt::moc::moc> (perform_update_id,   "qt.moc.compile", m);
+        rs.insert_rule<qt::moc::moc> (perform_clean_id,    "qt.moc.compile", m);
+        rs.insert_rule<qt::moc::moc> (configure_update_id, "qt.moc.compile", m);
       }
 
       return true;

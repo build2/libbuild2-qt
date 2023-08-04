@@ -6,59 +6,63 @@ namespace build2
   {
     namespace moc
     {
-      // moc.cxx
-      //
-      const target_type moc_cxx::static_type
-      {
-        "moc.cxx",
-        &cxx::cxx::static_type,
-        &target_factory<moc_cxx>,
-        cxx::cxx::static_type.fixed_extension,
-        cxx::cxx::static_type.default_extension,
-        cxx::cxx::static_type.pattern,
-        nullptr /* print */,    // Like cxx::cxx.
-        &file_search,           // Like cxx::cxx.
-        target_type::flag::none // Like cxx::cxx.
-      };
+      static optional<string>
+      moc_default_ext (const target_key& tk,
+                       const scope& s,
+                       const char*,
+                       bool);
 
-      // @@ TMP Without using this function for moc_moc::default_extension, b
-      //        {clean update}(libbuild2-qt-tests/) gives the following error:
-      //
-      //          error: multiple targets share path ../libbuild2-qt-build/target/libbuild2-qt-tests/moc/sink.moc
-      //          info: first target:  ../libbuild2-qt-build/target/libbuild2-qt-tests/moc/moc.moc{sink}
-      //          info: second target: ../libbuild2-qt-build/target/libbuild2-qt-tests/moc/h{sink}
-      //          info: target ../libbuild2-qt-build/target/libbuild2-qt-tests/moc/moc.moc{sink} has non-noop recipe
-      //          info: target ../libbuild2-qt-build/target/libbuild2-qt-tests/moc/h{sink} is not declared in a buildfile
-      //          info: perhaps it is a dynamic dependency?
-      //
-      //       Might be because dyndep::match_extension() calls
-      //       default_extension() only, and not fixed_extension().
-      //
-      template <const char* def>
-      optional<string>
-      moc_default_extension (const target_key&,
-                             const scope&,
-                             const char*,
-                             bool)
-      {
-        return def;
-      }
-
-      // moc.moc
+      // moc
       //
       extern const char moc_ext[] = "moc";
-      const target_type moc_moc::static_type
+      const target_type moc::static_type
       {
-        "moc.moc",
+        "moc",
         &cxx::ixx::static_type,
-        &target_factory<moc_moc>,
-        &target_extension_fix<moc_ext>,
-        &moc_default_extension<moc_ext>,
-        &target_pattern_fix<moc_ext>,
+        &target_factory<moc>,
+        nullptr /* fixed_extension */,
+        &moc_default_ext,
+        &target_pattern_var<moc_ext>,
         nullptr /* print */,
         &file_search,
         target_type::flag::none
       };
+
+      // @@ TMP target_extension_var() returns the base type's `extension`
+      //        value if not set on moc{*} so we get "ixx" instead of "moc" if
+      //        moc{*}'s extension var is unset. This function works around
+      //        that but the method is most probably not correct so did not
+      //        try to implement this properly.
+      //
+      static optional<string>
+      moc_default_ext (const target_key& tk,
+                       const scope& s,
+                       const char*,
+                       bool)
+      {
+        optional<string> e (
+            target_extension_var<moc_ext> (tk, s, nullptr, false));
+
+        if (e && e != moc_ext)
+        {
+          // Compare e with the base's default extension. If they match,
+          // return moc_ext, otherwise it must be moc{*}'s extension value so
+          // return that.
+          //
+          auto base_default_ext = moc::static_type.base->default_extension;
+
+          if (base_default_ext != nullptr)
+          {
+            string bn (tk.type->base->name);
+            target_key btk {tk.type->base, nullptr, nullptr, &bn, nullopt};
+
+            if (e != base_default_ext (btk, s, nullptr, false))
+              return e;
+          }
+        }
+
+        return moc_ext;
+      }
     }
   }
 }
