@@ -6,6 +6,23 @@ namespace build2
   {
     namespace moc
     {
+
+#if 0
+      extern const char rs_ext_def[] = "rs";
+      const target_type rs::static_type
+      {
+        "rs",
+        &file::static_type,
+        &target_factory<rs>,
+        nullptr /* fixed_extension */,
+        &target_extension_var<rs_ext_def>,
+        &target_pattern_var<rs_ext_def>,
+        nullptr /* print */,
+        &file_search,
+        target_type::flag::none
+      };
+#endif
+
       static optional<string>
       moc_default_ext (const target_key& tk,
                        const scope& s,

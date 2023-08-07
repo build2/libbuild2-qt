@@ -62,13 +62,18 @@ namespace build2
         return false;
       }
 
-      bool
-      compile_rule::match (action a,
-                           target& t,
-                           const string& hint,
-                           match_extra&) const
+      bool compile_rule::
+      match (action a,
+             target& t,
+             const string& hint,
+             match_extra&) const
       {
         tracer trace ("qt::moc::compile_rule::match");
+
+        auto find_prereq = [a, &t] (const target_type& tt, const char* n)
+        {
+          // @@ TODO: return as file.
+        };
 
         if (t.is_a<cxx::cxx> ())
         {
@@ -80,13 +85,19 @@ namespace build2
 
           if (hint.empty ())
           {
-            if (t.name.find ("moc_") == string::npos)
+            if (t.name.find ("moc_") == string::npos) // @@ Broken (foo_moc_foo)
               return false;
 
             pn = t.name.c_str () + 4;
           }
           else
             pn = nullptr;
+
+          if (const file* p = find_prereq (hxx::static_type, n))
+          {
+            // @@ TODO: pass to match() via match_extra::data (looks for
+            //    an example in one of the rules).
+          }
 
           if (have_prereq<cxx::hxx> (a, t, pn))
             return true;
@@ -120,7 +131,7 @@ namespace build2
         tracer trace ("qt::moc::compile_rule::apply");
 
         file& t (xt.as<file> ());
-        t.derive_path ();
+        t.derive_path (); // @@ Returns path.
         const path& tp (t.path ());
 
         context& ctx (t.ctx);
@@ -152,6 +163,8 @@ namespace build2
         // This is a perform update.
 
         // Get the first hxx{} or cxx{} prerequisite target.
+        //
+        // @@ Not necessarily the first if moc_?
         //
         const file* s;
         {

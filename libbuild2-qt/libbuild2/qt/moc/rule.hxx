@@ -31,6 +31,8 @@ namespace build2
         explicit
         compile_rule (data&& d): data (move (d)) {}
 
+        // @@ Use rule insttead of simple_rule.
+        //
         virtual bool
         match (action, target&) const override
         {
@@ -47,6 +49,13 @@ namespace build2
 
         target_state
         perform_update (action, const target&, match_data&) const;
+
+        // @@ Try this to get rid of qualifications in implementation.
+        //
+        using cxx = build2::cxx::cxx;
+        using hxx = build2::cxx::hxx;
+        using moc = qt::moc::moc;
+
       };
     }
   }

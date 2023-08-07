@@ -1,3 +1,8 @@
+// @@ We normally include headers with a prefix:
+//    https://build2.org/build2-toolchain/doc/build2-toolchain-intro.xhtml#proj-struct
+//
+//    But make sure it works with quoted-include.
+
 #include "sink.hxx"
 #include "source.hxx"
 

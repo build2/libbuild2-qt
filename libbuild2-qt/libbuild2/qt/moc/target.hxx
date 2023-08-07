@@ -14,10 +14,7 @@ namespace build2
     namespace moc
     {
       // A moc-generated C++ source file generated from a C++ source file
-      // (e.g., foo.cxx -> foo.moc) which should be included (compilation can
-      // be made to work but is not fully supported).
-      //
-      // @@ TODO: change to axx{} if we end up having it.
+      // (e.g., foo.cxx -> foo.moc) which should be included.
       //
       class LIBBUILD2_QT_SYMEXPORT moc: public cxx::ixx
       {
