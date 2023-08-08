@@ -23,7 +23,7 @@ namespace build2
         const string&  csum;    // Moc compiler checksum.
       };
 
-      class LIBBUILD2_QT_SYMEXPORT compile_rule: public simple_rule,
+      class LIBBUILD2_QT_SYMEXPORT compile_rule: public rule,
                                                  private virtual data,
                                                  private dyndep_rule
       {
@@ -31,19 +31,11 @@ namespace build2
         explicit
         compile_rule (data&& d): data (move (d)) {}
 
-        // @@ Use rule insttead of simple_rule.
-        //
-        virtual bool
-        match (action, target&) const override
-        {
-          return false;
-        }
-
         virtual bool
         match (action, target&, const string&, match_extra&) const override;
 
         virtual recipe
-        apply (action, target&) const override;
+        apply (action, target&, match_extra&) const override;
 
         struct match_data;
 
@@ -52,9 +44,9 @@ namespace build2
 
         // @@ Try this to get rid of qualifications in implementation.
         //
-        using cxx = build2::cxx::cxx;
-        using hxx = build2::cxx::hxx;
-        using moc = qt::moc::moc;
+        // using cxx = build2::cxx::cxx;
+        // using hxx = build2::cxx::hxx;
+        // using moc = qt::moc::moc;
 
       };
     }

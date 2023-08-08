@@ -1,6 +1,6 @@
 #include <QtCore/QVariant> // For QObject::setProperty() argument
 
-#include "sink.hxx"
+#include <moc/sink.hxx>
 
 class Sink::number: public QObject
 {
@@ -29,4 +29,5 @@ num () const
   return num_->property ("value").value<int> ();
 }
 
-#include "sink.moc"
+#include <moc/sink_moc.cxx>
+#include "sink.moc" // Also test ""-style inclusion.

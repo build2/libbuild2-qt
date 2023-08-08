@@ -76,8 +76,7 @@ namespace build2
         tracer trace ("qt::rcc::compile_rule::apply");
 
         file& t (xt.as<file> ());
-        t.derive_path ();
-        const path& tp (t.path ());
+        const path& tp (t.derive_path ());
 
         context& ctx (t.ctx);
         const scope& bs (t.base_scope ());

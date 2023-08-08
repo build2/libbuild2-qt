@@ -1,3 +1,5 @@
+#pragma once
+
 #include <QtCore/QObject>
 
 class Source: public QObject

@@ -70,10 +70,10 @@ namespace build2
       {
         tracer trace ("qt::moc::compile_rule::match");
 
-        auto find_prereq = [a, &t] (const target_type& tt, const char* n)
-        {
-          // @@ TODO: return as file.
-        };
+        // auto find_prereq = [a, &t] (const target_type& tt, const char* n)
+        // {
+        //   // @@ TODO: return as file.
+        // };
 
         if (t.is_a<cxx::cxx> ())
         {
@@ -85,7 +85,7 @@ namespace build2
 
           if (hint.empty ())
           {
-            if (t.name.find ("moc_") == string::npos) // @@ Broken (foo_moc_foo)
+            if (t.name.compare (0, 4, "moc_") != 0)
               return false;
 
             pn = t.name.c_str () + 4;
@@ -93,11 +93,11 @@ namespace build2
           else
             pn = nullptr;
 
-          if (const file* p = find_prereq (hxx::static_type, n))
-          {
-            // @@ TODO: pass to match() via match_extra::data (looks for
-            //    an example in one of the rules).
-          }
+          // if (const file* p = find_prereq (hxx::static_type, n))
+          // {
+          //   // @@ TODO: pass to match() via match_extra::data (looks for
+          //   //    an example in one of the rules).
+          // }
 
           if (have_prereq<cxx::hxx> (a, t, pn))
             return true;
@@ -126,13 +126,12 @@ namespace build2
       }
 
       recipe compile_rule::
-      apply (action a, target& xt) const
+      apply (action a, target& xt, match_extra&) const
       {
         tracer trace ("qt::moc::compile_rule::apply");
 
         file& t (xt.as<file> ());
-        t.derive_path (); // @@ Returns path.
-        const path& tp (t.path ());
+        const path& tp (t.derive_path ());
 
         context& ctx (t.ctx);
         const scope& bs (t.base_scope ());

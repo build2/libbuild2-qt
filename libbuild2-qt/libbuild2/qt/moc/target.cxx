@@ -6,23 +6,6 @@ namespace build2
   {
     namespace moc
     {
-
-#if 0
-      extern const char rs_ext_def[] = "rs";
-      const target_type rs::static_type
-      {
-        "rs",
-        &file::static_type,
-        &target_factory<rs>,
-        nullptr /* fixed_extension */,
-        &target_extension_var<rs_ext_def>,
-        &target_pattern_var<rs_ext_def>,
-        nullptr /* print */,
-        &file_search,
-        target_type::flag::none
-      };
-#endif
-
       static optional<string>
       moc_default_ext (const target_key& tk,
                        const scope& s,
@@ -30,6 +13,8 @@ namespace build2
                        bool);
 
       // moc
+      //
+      // @@ TODO Derive from file instead of ixx.
       //
       extern const char moc_ext[] = "moc";
       const target_type moc::static_type
@@ -45,11 +30,8 @@ namespace build2
         target_type::flag::none
       };
 
-      // @@ TMP target_extension_var() returns the base type's `extension`
-      //        value if not set on moc{*} so we get "ixx" instead of "moc" if
-      //        moc{*}'s extension var is unset. This function works around
-      //        that but the method is most probably not correct so did not
-      //        try to implement this properly.
+      // @@ TODO Remove this function once moc{} is derived from file{}
+      //    (replace it with target_extension_var<moc_ext>()).
       //
       static optional<string>
       moc_default_ext (const target_key& tk,
@@ -57,6 +39,12 @@ namespace build2
                        const char*,
                        bool)
       {
+        // @@ TMP target_extension_var() returns the base type's `extension`
+        //        value if not set on moc{*} so we get "ixx" instead of "moc"
+        //        if moc{*}'s extension var is unset. This function works
+        //        around that but the method is most probably not correct so
+        //        did not try to implement this properly.
+        //
         optional<string> e (
             target_extension_var<moc_ext> (tk, s, nullptr, false));
 
