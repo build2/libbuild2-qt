@@ -22,13 +22,18 @@ namespace build2
     {
       struct compile_rule::match_data
       {
-        match_data (const compile_rule& r, size_t pn) : pts_n (pn), rule (r) {}
+        match_data (const compile_rule& r, const file& s, size_t pn)
+            : src (s), pts_n (pn), rule (r)
+        {
+        }
 
         depdb::reopen_state dd;
 
         // The number of valid header paths read from the depdb.
         //
         size_t skip_count = 0;
+
+        const file& src; // The source/input prerequisite target.
 
         const size_t pts_n; // Number of static prerequisites.
 
@@ -43,42 +48,44 @@ namespace build2
         }
       };
 
-      // Return true if t has a prerequisite of type P with the specified
-      // name, or any name if n is null.
-      //
-      template <typename P>
-      static bool
-      have_prereq (action a, const target& t, const char* n)
-      {
-        for (prerequisite_member p: group_prerequisite_members (a, t))
-        {
-          // If excluded or ad hoc, then don't factor it into our tests.
-          //
-          if (include (a, t, p) == include_type::normal)
-            if (p.is_a<P> () && (n == nullptr || p.name () == n))
-              return true;
-        }
-
-        return false;
-      }
-
       bool compile_rule::
       match (action a,
              target& t,
              const string& hint,
-             match_extra&) const
+             match_extra& me) const
       {
         tracer trace ("qt::moc::compile_rule::match");
 
-        // auto find_prereq = [a, &t] (const target_type& tt, const char* n)
-        // {
-        //   // @@ TODO: return as file.
-        // };
+        // Find and return a prerequisite of type tt with the specified name,
+        // or any name if n is null. Return nullopt if there is no such
+        // prerequisite.
+        //
+        auto find_prereq = [a, &t] (const target_type& tt,
+                                    const char* n)
+          -> optional<prerequisite_member>
+        {
+          for (prerequisite_member p: group_prerequisite_members (a, t))
+          {
+            // If excluded or ad hoc, then don't factor it into our tests.
+            //
+            if (include (a, t, p) == include_type::normal)
+              if (p.is_a (tt) && (n == nullptr || p.name () == n))
+                return p;
+          }
 
+          return nullopt;
+        };
+
+        // Check whether we have a suitable target and source/input
+        // prerequisite.
+        //
+        // Note that the source/input prerequisite is passed to apply() via
+        // match_extra and from there to perform_update() via match_data.
+        //
         if (t.is_a<cxx> ())
         {
           // Enforce the moc naming conventions (cxx{moc_foo} from hxx{foo})
-          // unless we have a rule hint, in which case we accept any filenames
+          // unless we have a rule hint, in which case we accept any filename
           // and take the first hxx{} prerequisite as the input file.
           //
           const char* pn; // Prerequisite name.
@@ -93,21 +100,21 @@ namespace build2
           else
             pn = nullptr;
 
-          // if (const file* p = find_prereq (hxx::static_type, n))
-          // {
-          //   // @@ TODO: pass to match() via match_extra::data (looks for
-          //   //    an example in one of the rules).
-          // }
-
-          if (have_prereq<hxx> (a, t, pn))
+          if (auto p = find_prereq (hxx::static_type, pn))
+          {
+            me.data (*p); // Pass prerequisite to apply().
             return true;
+          }
 
           l4 ([&]{trace << "no header for target " << t;});
         }
         else if (t.is_a<moc> ())
         {
-          if (have_prereq<cxx> (a, t, t.name.c_str ()))
+          if (auto p = find_prereq (cxx::static_type, t.name.c_str ()))
+          {
+            me.data (*p); // Pass prerequisite to apply().
             return true;
+          }
 
           l4 ([&]{trace << "no source file for target " << t;});
         }
@@ -126,7 +133,7 @@ namespace build2
       }
 
       recipe compile_rule::
-      apply (action a, target& xt, match_extra&) const
+      apply (action a, target& xt, match_extra& me) const
       {
         tracer trace ("qt::moc::compile_rule::apply");
 
@@ -161,20 +168,9 @@ namespace build2
 
         // This is a perform update.
 
-        // Get the first hxx{} or cxx{} prerequisite target.
+        // Retrieve the source/input prerequisite target from match_extra.
         //
-        // @@ Not necessarily the first if moc_?
-        //
-        const file* s;
-        {
-          for (prerequisite_target& p: t.prerequisite_targets[a])
-          {
-            if ((s = p->is_a<cxx::hxx> ()) || (s = p->is_a<cxx::cxx> ()))
-              break;
-          }
-
-          assert (s != nullptr);
-        }
+        const file& s (me.data<prerequisite_member> ().load ()->as<file> ());
 
         // Create the output directory.
         //
@@ -207,7 +203,7 @@ namespace build2
 
           // Finally the input file.
           //
-          if (dd.expect (s->path ()) != nullptr)
+          if (dd.expect (s.path ()) != nullptr)
             l4 ([&]{trace << "input file mismatch forcing update of " << t;});
         }
 
@@ -238,7 +234,7 @@ namespace build2
             u = update (trace, a, *p.target, u ? timestamp_unknown : mt) || u;
         }
 
-        match_data md (*this, t.prerequisite_targets[a].size ());
+        match_data md (*this, s, t.prerequisite_targets[a].size ());
 
         // Verify the header paths in the depdb unless we're already updating
         // (in which case they will be overwritten in perform_update()).
@@ -370,20 +366,6 @@ namespace build2
           assert (md.mt == timestamp_nonexistent);
         }
 
-        // Get the hxx{} or cxx{} prerequisite target.
-        //
-        const file* s;
-        {
-          for (prerequisite_target& p: t.prerequisite_targets[a])
-          {
-            if (p.target != nullptr &&
-                ((s = p->is_a<cxx::hxx> ()) || (s = p->is_a<cxx::cxx> ())))
-              break;
-          }
-
-          assert (s != nullptr);
-        }
-
         // Prepare the moc command line.
         //
         const process_path& pp (compiler.process_path ());
@@ -396,7 +378,7 @@ namespace build2
         // otherwise moc will put the relative path in the depfile.
         //
         path relo (relative (tp));            // Output path.
-        path sn (s->path ().leaf ());         // Header/source file name.
+        path sn (md.src.path ().leaf ());     // Source/input file name.
         path depfile (relo.string () + ".t"); // Depfile path.
 
         // If we're generating a cxx{}, pass -f to override the path with
@@ -429,14 +411,14 @@ namespace build2
 
         // Input path.
         //
-        args.push_back (s->path ().string ().c_str ());
+        args.push_back (md.src.path ().string ().c_str ());
 
         args.push_back (nullptr);
 
         if (verb >= 2)
           print_process (args);
         else if (verb)
-          print_diag ("moc", *s, t);
+          print_diag ("moc", md.src, t);
 
         // Sequence start time for mtime checks below.
         //
