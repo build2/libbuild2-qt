@@ -6,7 +6,11 @@
 #include <libbuild2/rule.hxx>
 #include <libbuild2/dyndep.hxx>
 
+#include <libbuild2/cxx/target.hxx>
+
 #include <libbuild2/qt/export.hxx>
+
+#include <libbuild2/qt/moc/target.hxx>
 
 namespace build2
 {
@@ -18,9 +22,9 @@ namespace build2
       //
       struct data
       {
-        const uint64_t version; // qt.version
-        const exe&     moc;     // Moc compiler target.
-        const string&  csum;    // Moc compiler checksum.
+        const uint64_t version;  // qt.version
+        const exe&     compiler; // Moc compiler target.
+        const string&  csum;     // Moc compiler checksum.
       };
 
       class LIBBUILD2_QT_SYMEXPORT compile_rule: public rule,
@@ -42,12 +46,9 @@ namespace build2
         target_state
         perform_update (action, const target&, match_data&) const;
 
-        // @@ Try this to get rid of qualifications in implementation.
-        //
-        // using cxx = build2::cxx::cxx;
-        // using hxx = build2::cxx::hxx;
-        // using moc = qt::moc::moc;
-
+        using cxx = build2::cxx::cxx;
+        using hxx = build2::cxx::hxx;
+        using moc = qt::moc::moc;
       };
     }
   }

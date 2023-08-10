@@ -75,7 +75,7 @@ namespace build2
         //   // @@ TODO: return as file.
         // };
 
-        if (t.is_a<cxx::cxx> ())
+        if (t.is_a<cxx> ())
         {
           // Enforce the moc naming conventions (cxx{moc_foo} from hxx{foo})
           // unless we have a rule hint, in which case we accept any filenames
@@ -99,14 +99,14 @@ namespace build2
           //   //    an example in one of the rules).
           // }
 
-          if (have_prereq<cxx::hxx> (a, t, pn))
+          if (have_prereq<hxx> (a, t, pn))
             return true;
 
           l4 ([&]{trace << "no header for target " << t;});
         }
-        else if (t.is_a<qt::moc::moc> ())
+        else if (t.is_a<moc> ())
         {
-          if (have_prereq<cxx::cxx> (a, t, t.name.c_str ()))
+          if (have_prereq<cxx> (a, t, t.name.c_str ()))
             return true;
 
           l4 ([&]{trace << "no source file for target " << t;});
@@ -143,7 +143,7 @@ namespace build2
         // For update inject dependency on the MOC compiler target.
         //
         if (a == perform_update_id)
-          inject (a, t, moc);
+          inject (a, t, compiler);
 
         // Match prerequisites.
         //
@@ -386,7 +386,7 @@ namespace build2
 
         // Prepare the moc command line.
         //
-        const process_path& pp (moc.process_path ());
+        const process_path& pp (compiler.process_path ());
         cstrings args {pp.recall_string ()};
 
         append_options (args, t, "qt.moc.options");
@@ -408,12 +408,12 @@ namespace build2
         // input source file (otherwise we'd get multiple definitions errors
         // if the input source file is also compiled, as is typical).
         //
-        if (t.is_a<cxx::cxx> ())
+        if (t.is_a<cxx> ())
         {
           args.push_back ("-f");
           args.push_back (sn.string ().c_str ());
         }
-        else if (t.is_a<qt::moc::moc> ())
+        else if (t.is_a<moc> ())
           args.push_back ("-i");
 
         // Depfile path.
