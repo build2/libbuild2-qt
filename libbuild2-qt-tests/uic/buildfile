@@ -24,4 +24,4 @@ exe{driver}: hxx{ui_foo}
 #
 hxx{ui_foo}: ui{foo}
 
-cxx.poptions += "-I$out_base"
+cxx.poptions += "-I$out_root"

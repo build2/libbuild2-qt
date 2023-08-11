@@ -66,4 +66,4 @@ exe{driver}: file{foo.txt foo2.txt foo3.txt     \
 # backslashes on Windows.
 #
 ob = $regex.replace($representation($out_base), '\\', '\\\\')
-cxx.poptions += "-I$out_base" -DOUT_BASE="\"$ob\""
+cxx.poptions += "-I$out_root" -DOUT_BASE="\"$ob\""

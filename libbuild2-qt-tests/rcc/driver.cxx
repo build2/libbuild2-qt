@@ -1,7 +1,7 @@
 #include <QtCore/QFile>
 #include <QtCore/QResource>
 
-#include "qrc_foo.hxx"
+#include <rcc/qrc_foo.hxx>
 
 int
 main ()

@@ -1,4 +1,4 @@
-#include "ui_foo.hxx"
+#include <uic/ui_foo.hxx>
 
 int
 main (int argc, char** argv)
