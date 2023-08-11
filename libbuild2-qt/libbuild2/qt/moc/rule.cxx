@@ -60,8 +60,7 @@ namespace build2
         // or any name if n is null. Return nullopt if there is no such
         // prerequisite.
         //
-        auto find_prereq = [a, &t] (const target_type& tt,
-                                    const char* n)
+        auto find_prereq = [a, &t] (const target_type& tt, const char* n)
           -> optional<prerequisite_member>
         {
           for (prerequisite_member p: group_prerequisite_members (a, t))
@@ -76,10 +75,9 @@ namespace build2
           return nullopt;
         };
 
-        // Check whether we have a suitable target and source/input
-        // prerequisite.
+        // Check whether we have a suitable target and source prerequisite.
         //
-        // Note that the source/input prerequisite is passed to apply() via
+        // Note that the source prerequisite is passed to apply() via
         // match_extra and from there to perform_update() via match_data.
         //
         if (t.is_a<cxx> ())
@@ -93,7 +91,11 @@ namespace build2
           if (hint.empty ())
           {
             if (t.name.compare (0, 4, "moc_") != 0)
+            {
+              // @@ Need to issue l4 trace why no match.
+
               return false;
+            }
 
             pn = t.name.c_str () + 4;
           }
@@ -106,7 +108,7 @@ namespace build2
             return true;
           }
 
-          l4 ([&]{trace << "no header for target " << t;});
+          l4 ([&]{trace << "no header file for target " << t;});
         }
         else if (t.is_a<moc> ())
         {
@@ -169,6 +171,10 @@ namespace build2
         // This is a perform update.
 
         // Retrieve the source/input prerequisite target from match_extra.
+        //
+        // Note that this prerequisite should have been searched by the
+        // match_prerequisite_members() call above and therefore we can just
+        // load it. @@ Is there a cleaner way to do this?
         //
         const file& s (me.data<prerequisite_member> ().load ()->as<file> ());
 
@@ -345,6 +351,9 @@ namespace build2
         const file& t (xt.as<file> ());
         const path& tp (t.path ());
 
+        const file& s (md.src);
+        const path& sp (s.path ());
+
         context& ctx (t.ctx);
         const scope& bs (t.base_scope ());
 
@@ -378,7 +387,7 @@ namespace build2
         // otherwise moc will put the relative path in the depfile.
         //
         path relo (relative (tp));            // Output path.
-        path sn (md.src.path ().leaf ());     // Source/input file name.
+        path sn (sp.leaf ());                 // Source/input file name.
         path depfile (relo.string () + ".t"); // Depfile path.
 
         // If we're generating a cxx{}, pass -f to override the path with
@@ -389,6 +398,9 @@ namespace build2
         // -i to prevent any #include directive from being generated for the
         // input source file (otherwise we'd get multiple definitions errors
         // if the input source file is also compiled, as is typical).
+        //
+        // @@ Need to support/expose include prefix (<moc/...>). Let's
+        //    do for starters via `qt.moc.options = -p moc/`.
         //
         if (t.is_a<cxx> ())
         {
@@ -411,14 +423,14 @@ namespace build2
 
         // Input path.
         //
-        args.push_back (md.src.path ().string ().c_str ());
+        args.push_back (sp.string ().c_str ());
 
         args.push_back (nullptr);
 
         if (verb >= 2)
           print_process (args);
         else if (verb)
-          print_diag ("moc", md.src, t);
+          print_diag ("moc", s, t);
 
         // Sequence start time for mtime checks below.
         //
