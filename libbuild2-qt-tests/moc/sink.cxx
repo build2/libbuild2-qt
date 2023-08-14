@@ -29,5 +29,4 @@ num () const
   return num_->property ("value").value<int> ();
 }
 
-#include <moc/sink_moc.cxx>
-#include "sink.moc" // Also test ""-style inclusion.
+#include <moc/sink.moc>
