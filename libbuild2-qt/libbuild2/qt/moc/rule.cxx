@@ -33,7 +33,7 @@ namespace build2
         //
         size_t skip_count = 0;
 
-        const file& src; // The source/input prerequisite target.
+        const file& src; // The source prerequisite target.
 
         const size_t pts_n; // Number of static prerequisites.
 
@@ -92,8 +92,7 @@ namespace build2
           {
             if (t.name.compare (0, 4, "moc_") != 0)
             {
-              // @@ Need to issue l4 trace why no match.
-
+              l4 ([&]{trace << "no \"moc_\" prefix in filename" << t;});
               return false;
             }
 
@@ -152,7 +151,7 @@ namespace build2
         // For update inject dependency on the MOC compiler target.
         //
         if (a == perform_update_id)
-          inject (a, t, compiler);
+          inject (a, t, ctgt);
 
         // Match prerequisites.
         //
@@ -170,7 +169,7 @@ namespace build2
 
         // This is a perform update.
 
-        // Retrieve the source/input prerequisite target from match_extra.
+        // Retrieve the source prerequisite target from match_extra.
         //
         // Note that this prerequisite should have been searched by the
         // match_prerequisite_members() call above and therefore we can just
@@ -377,7 +376,7 @@ namespace build2
 
         // Prepare the moc command line.
         //
-        const process_path& pp (compiler.process_path ());
+        const process_path& pp (ctgt.process_path ());
         cstrings args {pp.recall_string ()};
 
         append_options (args, t, "qt.moc.options");
@@ -387,7 +386,7 @@ namespace build2
         // otherwise moc will put the relative path in the depfile.
         //
         path relo (relative (tp));            // Output path.
-        path sn (sp.leaf ());                 // Source/input file name.
+        path sn (sp.leaf ());                 // Source file name.
         path depfile (relo.string () + ".t"); // Depfile path.
 
         // If we're generating a cxx{}, pass -f to override the path with

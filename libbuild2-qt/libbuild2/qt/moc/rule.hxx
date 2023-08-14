@@ -22,9 +22,9 @@ namespace build2
       //
       struct data
       {
-        const uint64_t version;  // qt.version
-        const exe&     compiler; // Moc compiler target.
-        const string&  csum;     // Moc compiler checksum.
+        const uint64_t version; // qt.version
+        const exe&     ctgt;    // Moc compiler target.
+        const string&  csum;    // Moc compiler checksum.
       };
 
       class LIBBUILD2_QT_SYMEXPORT compile_rule: public rule,
