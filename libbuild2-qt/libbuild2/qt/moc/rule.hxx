@@ -6,6 +6,7 @@
 #include <libbuild2/rule.hxx>
 #include <libbuild2/dyndep.hxx>
 
+#include <libbuild2/c/target.hxx>
 #include <libbuild2/cxx/target.hxx>
 
 #include <libbuild2/qt/export.hxx>
@@ -46,6 +47,7 @@ namespace build2
         target_state
         perform_update (action, const target&, match_data&) const;
 
+        using h   = build2::c::h;
         using cxx = build2::cxx::cxx;
         using hxx = build2::cxx::hxx;
         using moc = qt::moc::moc;

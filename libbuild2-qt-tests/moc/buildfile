@@ -36,9 +36,12 @@ exe{driver}: $libs
 # conventions (which recommend a `moc_` prefix for outputs generated from
 # headers).
 #
-cxx{moc_source}:                    hxx{source}
-[rule_hint=qt.moc] cxx{sink_moc}:   hxx{sink}
-moc{sink}:                          cxx{sink}
+# Add $libs as prerequisites to cause their exported options (macro
+# definitions, header search directories, etc.) to be passed to moc.
+#
+cxx{moc_source}:                    hxx{source} $libs
+[rule_hint=qt.moc] cxx{sink_moc}:   hxx{sink}   $libs
+moc{sink}:                          cxx{sink}   $libs
 
 # Set the include path prefix.
 #

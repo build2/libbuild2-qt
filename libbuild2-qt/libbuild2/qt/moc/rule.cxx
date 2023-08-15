@@ -9,7 +9,7 @@
 #include <libbuild2/diagnostics.hxx>
 #include <libbuild2/make-parser.hxx>
 
-#include <libbuild2/c/target.hxx>
+#include <libbuild2/bin/target.hxx>
 
 #include <libbuild2/qt/moc/target.hxx>
 
@@ -137,6 +137,11 @@ namespace build2
       {
         tracer trace ("qt::moc::compile_rule::apply");
 
+        // The prerequisite_target::include bits that indicate an unmatched
+        // library.
+        //
+        constexpr uintptr_t include_unmatch = 0x100;
+
         file& t (xt.as<file> ());
         const path& tp (t.derive_path ());
 
@@ -145,16 +150,123 @@ namespace build2
 
         // Inject dependency on the output directory.
         //
-        inject_fsdir (a, t);
+        const target* dir (inject_fsdir (a, t));
 
         // For update inject dependency on the MOC compiler target.
         //
         if (a == perform_update_id)
           inject (a, t, ctgt);
 
-        // Match prerequisites.
+        // Return true if a target type is a library.
         //
-        match_prerequisite_members (a, t);
+        auto is_lib = [] (const target_type& tt)
+        {
+          using namespace bin;
+
+          return tt.is_a (libx::static_type) || tt.is_a (liba::static_type) ||
+                 tt.is_a (libs::static_type) || tt.is_a (libux::static_type);
+        };
+
+        // Match static prerequisites.
+        //
+        // This is essentially match_prerequisite_members() but with support
+        // for unmatching library prerequisites.
+        //
+        // Unmatched libraries are not updated at all; libraries that cannot
+        // be unmatched are updated during execute only; all other types of
+        // prerequisites are updated both here, during match, and during
+        // execute.
+        //
+        // @@ TODO Explain the function of static library prerequisites
+        //         somewhere.
+        //
+        auto& pts (t.prerequisite_targets[a]);
+        {
+          // Start asynchronous matching of prerequisites. Wait with unlocked
+          // phase to allow phase switching.
+          //
+          wait_guard wg (ctx, ctx.count_busy (), t[a].task_count, true);
+
+          for (prerequisite_member p: group_prerequisite_members (a, t))
+          {
+            const target* pt (nullptr);
+            include_type  pi (include (a, t, p));
+
+            // Ignore excluded.
+            //
+            if (!pi)
+              continue;
+
+            if (pi == include_type::normal && is_lib (p.type ()))
+            {
+              if (a.operation () != update_id)
+                continue;
+
+              // Handle (phase two) imported libraries.
+              //
+              // if (p.proj ())
+              // {
+              //   pt = search_library (a,
+              //                        sys_lib_dirs,
+              //                        usr_lib_dirs,
+              //                        p.prerequisite);
+              // }
+
+              if (pt == nullptr)
+                pt = &p.search (t);
+            }
+            else
+            {
+              pt = &p.search (t);
+
+              // Don't add injected fsdir{} or compiler target twice.
+              //
+              if (pt == dir || pt == &ctgt)
+                continue;
+
+              if (a.operation () == clean_id && !pt->in (*bs.root_scope ()))
+                continue;
+            }
+
+            match_async (a, *pt, ctx.count_busy (), t[a].task_count);
+
+            pts.emplace_back (pt, pi);
+          }
+
+          wg.wait ();
+
+          // Finish matching all the targets that we have started.
+          //
+          for (prerequisite_target& pt: pts)
+          {
+            if (pt == dir || pt == &ctgt) // See above.
+              continue;
+
+            if (is_lib (pt->type ()))
+            {
+              pair<bool, target_state> mr (match_complete (a,
+                                                           *pt.target,
+                                                           unmatch::safe));
+
+              l6 ([&]{trace << "unmatch " << *pt.target << ": " << mr.first;});
+
+              if (mr.first)
+              {
+                pt.include |= include_unmatch;
+
+                // Move the target pointer to data to prevent the prerequisite
+                // from being updated while keeping its target around so that
+                // its options can be extracted later.
+                //
+                pt.data = reinterpret_cast<uintptr_t> (pt.target);
+                pt.target = nullptr;
+                pt.include |= prerequisite_target::include_target;
+              }
+            }
+            else
+              match_complete (a, *pt.target);
+          }
+        }
 
         if (a == perform_clean_id)
         {
@@ -231,11 +343,17 @@ namespace build2
 
         // Update the static prerequisites.
         //
+        for (prerequisite_target& p: pts)
         {
-          auto& pts (t.prerequisite_targets[a]);
+          // Skip library prerequisites, both unmatched (never updated) and
+          // matched (updated only during execute).
+          //
+          // @@ TODO Detect changed export.poptions and set u=true if so.
+          //
+          if (((p.include & include_unmatch) != 0) || is_lib (p->type ()))
+            continue;
 
-          for (prerequisite_target& p: pts)
-            u = update (trace, a, *p.target, u ? timestamp_unknown : mt) || u;
+          u = update (trace, a, *p.target, u ? timestamp_unknown : mt) || u;
         }
 
         match_data md (*this, s, t.prerequisite_targets[a].size ());
@@ -260,7 +378,7 @@ namespace build2
                   trace, "header",
                   a, bs, t,
                   fp, true /* cache */, true /* normalized */,
-                  map_ext, c::h::static_type).first)
+                  map_ext, h::static_type).first)
             {
               // Note that static prerequisites are never written to the
               // depdb.
@@ -357,19 +475,24 @@ namespace build2
 
         // Update prerequisites.
         //
-        // Note that this is done purely to keep the dependency counts
-        // straight. (All prerequisites were updated in apply() and thus their
-        // states have already been factored into the update decision.)
+        // Note that, with the exception of matched libraries which are being
+        // updated here for the first time, this is done purely to keep the
+        // dependency counts straight. (All non-library prerequisites were
+        // updated in apply() and thus their states have already been factored
+        // into the update decision.)
         //
         {
-          // Note: while strictly speaking we don't need the mtime check, this
-          // is the most convenient version of execute_prerequisites().
+          // Note that the mtime check is only necessary for the matched
+          // library prerequisites (and unmatched libraries will be skipped).
           //
           optional<target_state> ps (execute_prerequisites (a, t, md.mt));
 
           if (ps)
             return *ps; // No need to update.
 
+          // @@ TODO This will fail if a library prereq is out of date at this
+          //          point.
+          //
           assert (md.mt == timestamp_nonexistent);
         }
 
@@ -463,7 +586,7 @@ namespace build2
                 a, bs, t,
                 fp, false /* cache */, true /* normalized */,
                 true /* dynamic */,
-                map_ext, c::h::static_type).first)
+                map_ext, h::static_type).first)
             {
               // Do not store static prerequisites in the depdb.
               //
