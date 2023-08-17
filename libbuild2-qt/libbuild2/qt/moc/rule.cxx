@@ -10,7 +10,6 @@
 #include <libbuild2/make-parser.hxx>
 
 #include <libbuild2/c/target.hxx>
-#include <libbuild2/cxx/target.hxx>
 
 #include <libbuild2/qt/moc/target.hxx>
 
