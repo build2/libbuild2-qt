@@ -16,11 +16,11 @@ namespace build2
       // A moc-generated C++ source file generated from a C++ source file
       // (e.g., foo.cxx -> foo.moc) which should be included.
       //
-      class LIBBUILD2_QT_SYMEXPORT moc: public cxx::ixx
+      class LIBBUILD2_QT_SYMEXPORT moc: public cxx::cxx_inc
       {
       public:
         moc (context& c, dir_path d, dir_path o, string n)
-            : cxx::ixx (c, move (d), move (o), move (n))
+            : cxx::cxx_inc (c, move (d), move (o), move (n))
         {
           dynamic_type = &static_type;
         }
