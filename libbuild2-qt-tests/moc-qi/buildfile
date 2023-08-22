@@ -21,6 +21,7 @@ exe{driver}: hxx{source sink} cxx{driver sink}
 #
 exe{driver}: cxx{moc_source}                # Compiled.
 exe{driver}: cxx{moc_sink}: include = adhoc # Included.
+exe{driver}: moc{sink}                      # Included.
 
 # Libraries.
 #
@@ -30,5 +31,6 @@ exe{driver}: $libs
 #
 cxx{moc_source}: hxx{source}
 cxx{moc_sink}:   hxx{sink}
+moc{sink}:       cxx{sink}
 
 cxx.poptions += "-I$out_base" "-I$src_base"

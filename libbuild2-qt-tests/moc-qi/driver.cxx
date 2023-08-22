@@ -14,10 +14,10 @@ main ()
                     &sink, &Sink::recv_num);
 
   source.send_num (123);
-  assert (sink.num == 123);
+  assert (sink.num () == 123);
 
   source.send_num (456);
-  assert (sink.num == 456);
+  assert (sink.num () == 456);
 
   return 0;
 }
