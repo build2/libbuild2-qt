@@ -91,7 +91,7 @@ namespace build2
           {
             if (t.name.compare (0, 4, "moc_") != 0)
             {
-              l4 ([&]{trace << "no \"moc_\" prefix in filename" << t;});
+              l4 ([&]{trace << "no moc_ prefix in target " << t;});
               return false;
             }
 
@@ -140,7 +140,7 @@ namespace build2
         // The prerequisite_target::include bits that indicate an unmatched
         // library.
         //
-        constexpr uintptr_t include_unmatch = 0x100;
+        const uintptr_t include_unmatch = 0x100;
 
         file& t (xt.as<file> ());
         const path& tp (t.derive_path ());
@@ -261,10 +261,15 @@ namespace build2
                 pt.data = reinterpret_cast<uintptr_t> (pt.target);
                 pt.target = nullptr;
                 pt.include |= prerequisite_target::include_target;
+
+                continue;
               }
+              // Fall through.
             }
-            else
-              match_complete (a, *pt.target);
+
+            // @@ Try `b update: cxx{moc_foo}`
+
+            match_complete (a, *pt.target);
           }
         }
 
@@ -485,13 +490,16 @@ namespace build2
           // Note that the mtime check is only necessary for the matched
           // library prerequisites (and unmatched libraries will be skipped).
           //
+          // @@ We actually want to ignore any changes to libraries that
+          //    got updated (since they don't affect the result).
+          //
           optional<target_state> ps (execute_prerequisites (a, t, md.mt));
 
           if (ps)
             return *ps; // No need to update.
 
           // @@ TODO This will fail if a library prereq is out of date at this
-          //          point.
+          //         point. @@ Should be fixed by above fix.
           //
           assert (md.mt == timestamp_nonexistent);
         }

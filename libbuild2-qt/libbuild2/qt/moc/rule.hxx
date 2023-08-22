@@ -6,7 +6,7 @@
 #include <libbuild2/rule.hxx>
 #include <libbuild2/dyndep.hxx>
 
-#include <libbuild2/c/target.hxx>
+#include <libbuild2/c/target.hxx>    // h{} (fallback)
 #include <libbuild2/cxx/target.hxx>
 
 #include <libbuild2/qt/export.hxx>

@@ -7,3 +7,4 @@ recv_num (int n)
 }
 
 #include "moc_sink.cxx"
+//@@ include "sink.moc"

@@ -1,6 +1,7 @@
 # This is a stripped-down version of the test in ../moc/ which tests only that
 # relative, ""-style inclusion works (so see ../moc/buildfile for any missing
-# information).
+# information; the primary difference is the use of -I$*_base instead of
+# -I$*_root).
 #
 
 qt.version = $config.libbuild2_qt_tests.qt
