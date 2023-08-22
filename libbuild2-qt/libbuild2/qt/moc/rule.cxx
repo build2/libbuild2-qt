@@ -244,6 +244,9 @@ namespace build2
 
             if (is_lib (pt->type ()))
             {
+              // @@ TMP This actually always calls match_impl first and then
+              //        does the unmatch stuff afterwards.
+              //
               pair<bool, target_state> mr (match_complete (a,
                                                            *pt.target,
                                                            unmatch::safe));
@@ -261,15 +264,10 @@ namespace build2
                 pt.data = reinterpret_cast<uintptr_t> (pt.target);
                 pt.target = nullptr;
                 pt.include |= prerequisite_target::include_target;
-
-                continue;
               }
-              // Fall through.
             }
-
-            // @@ Try `b update: cxx{moc_foo}`
-
-            match_complete (a, *pt.target);
+            else
+              match_complete (a, *pt.target);
           }
         }
 
