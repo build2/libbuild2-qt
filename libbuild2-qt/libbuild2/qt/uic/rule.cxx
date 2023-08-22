@@ -52,7 +52,7 @@ namespace build2
         // For update inject dependency on the uic compiler target.
         //
         if (a == perform_update_id)
-          inject (a, t, uic);
+          inject (a, t, ctgt);
 
         switch (a)
         {
@@ -132,7 +132,7 @@ namespace build2
         path relo (relative (tp));
         path rels (relative (s.path ()));
 
-        const process_path& pp (uic.process_path ());
+        const process_path& pp (ctgt.process_path ());
         cstrings args {pp.recall_string ()};
 
         append_options (args, t, "qt.uic.options");

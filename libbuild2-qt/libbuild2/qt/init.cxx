@@ -191,13 +191,13 @@ namespace build2
       {
         auto pr (import_exe (rs, "moc", v, loc, opt));
 
-        const exe* moc (pr.first);
+        const exe* ctgt (pr.first);
         const string* csum (pr.second);
 
-        if (moc == nullptr)
+        if (ctgt == nullptr)
           return false;
 
-        extra.set_module (new module (data {v, *moc, *csum}));
+        extra.set_module (new module (data {v, *ctgt, *csum}));
       }
       else
       {
@@ -339,13 +339,13 @@ namespace build2
       {
         auto pr (import_exe (rs, "rcc", v, loc, opt));
 
-        const exe* rcc (pr.first);
+        const exe* ctgt (pr.first);
         const string* csum (pr.second);
 
-        if (rcc == nullptr)
+        if (ctgt == nullptr)
           return false;
 
-        extra.set_module (new module (data {v, *rcc, *csum}));
+        extra.set_module (new module (data {v, *ctgt, *csum}));
       }
       else
       {
@@ -482,13 +482,13 @@ namespace build2
       {
         auto pr (import_exe (rs, "uic", v, loc, opt));
 
-        const exe* uic (pr.first);
+        const exe* ctgt (pr.first);
         const string* csum (pr.second);
 
-        if (uic == nullptr)
+        if (ctgt == nullptr)
           return false;
 
-        extra.set_module (new module (data {v, *uic, *csum}));
+        extra.set_module (new module (data {v, *ctgt, *csum}));
       }
       else
       {

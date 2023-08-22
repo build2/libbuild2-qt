@@ -88,7 +88,7 @@ namespace build2
         // For update inject dependency on the RCC compiler target.
         //
         if (a == perform_update_id)
-          inject (a, t, rcc);
+          inject (a, t, ctgt);
 
         // Match prerequisites.
         //
@@ -327,7 +327,7 @@ namespace build2
 
         // Prepare the rcc command line.
         //
-        const process_path& pp (rcc.process_path ());
+        const process_path& pp (ctgt.process_path ());
         cstrings args {pp.recall_string ()};
 
         append_options (args, t, "qt.rcc.options");
