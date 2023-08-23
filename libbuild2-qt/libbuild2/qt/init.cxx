@@ -238,10 +238,19 @@ namespace build2
           extra.module = move (m);
       }
 
-      // Configuration.
-      //
       if (first)
       {
+        // Enter variables.
+        //
+        // All the variables we enter are qualified so go straight for the
+        // public variable pool.
+        //
+        variable_pool& vp (bs.var_pool (true /* public */));
+
+        vp.insert<bool> ("qt.moc.include_with_quotes");
+
+        // Configuration.
+        //
         // config.qt.moc.options
         //
         // Note that we merge it into the corresponding qt.moc.* variable.

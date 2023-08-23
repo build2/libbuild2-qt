@@ -33,4 +33,6 @@ cxx{moc_source}: hxx{source}
 cxx{moc_sink}:   hxx{sink}
 moc{sink}:       cxx{sink}
 
+qt.moc.include_with_quotes = true
+
 cxx.poptions += "-I$out_base" "-I$src_base"

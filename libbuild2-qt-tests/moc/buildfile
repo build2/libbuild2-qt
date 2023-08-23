@@ -45,9 +45,9 @@ moc{sink}:                          cxx{sink}   $libs
 
 # Set the include path prefix.
 #
-# @@ TODO Note that moc always includes with quotes if the prefix is present
-#    (angle brackets not supported).
+# Also test handling of multiple earlier instances using different forms with
+# invalid prefixes.
 #
-qt.moc.options = -p moc
+qt.moc.options = --p=xxx --p yyy -pzzz -p moc
 
 cxx.poptions += "-I$out_root" "-I$src_root"

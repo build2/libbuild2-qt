@@ -509,33 +509,137 @@ namespace build2
 
         append_options (args, t, "qt.moc.options");
 
-        // Translate output path to relative (to working directory) for easier
-        // to read diagnostics. The input path, however, must be absolute
-        // otherwise moc will put the relative path in the depfile.
+        // The value to be passed via the -f option: the bracketed or quoted
+        // source file include path, e.g., `<moc/source.hxx>`. Note: only used
+        // if the output is a cxx{}.
         //
-        path relo (relative (tp));            // Output path.
-        path sn (sp.leaf ());                 // Source file name.
-        path depfile (relo.string () + ".t"); // Depfile path.
+        optional<string> fopt_val;
+
+        // Parse the -p option (source file include prefix) passed in
+        // qt.moc.options.
+        //
+        // Keep the value from the last -p instance. Remove all -p instances,
+        // including the last, from args because the value will be passed to
+        // moc via the -f option (see below).
+        //
+        // Variations accepted by moc (see QCommandLineParser):
+        //
+        // -p X
+        // -pX
+        // --p X
+        // --p=X
+        //
+        // Iterate in reverse because the loop counter would have to be
+        // updated conditionally in a forward loop (don't increment after
+        // having erased). Note also that we skip the moc executable in
+        // args[0].
+        //
+        // @@ TODO Remove any -f or -i options found here (with warning)?
+        //
+        for (size_t i (args.size () - 1); i != 0; --i)
+        {
+          const char* a (args[i]);
+
+          // Skip option name if found, otherwise continue.
+          //
+          if (strncmp (a, "-p", 2) == 0)
+            a += 2;
+          else if (strncmp (a, "--p", 3) == 0)
+            a += 3;
+          else
+            continue;
+
+          // Erase the next n elements from args.
+          //
+          auto erase = [&args, i] (size_t n)
+          {
+            auto j = args.begin () + i;
+            args.erase (j, j + n);
+          };
+
+          optional<string> v; // Option value.
+
+          if (*a == '\0') // -p X | --p X
+          {
+            if (i != args.size () - 1)
+            {
+              // @@ TMP We're erasing something completely unrelated if -p's
+              //        value is missing. For example: `-p --x=foo`.
+              //
+              v = args[i + 1];
+              erase (2);
+            }
+            else // No value present.
+              erase (1);
+          }
+          else // -pX | -p=X | --pX | --p=X
+          {
+            if (*a == '=')
+              ++a;
+
+            v = a;
+            erase (1);
+          }
+
+          if (!v || v->empty ())
+            fail << "qt.moc.options contains a -p option without a value";
+
+          // @@ TMP No need to warn when we ignore a -p because it could be
+          //        from an outer scope, right?
+          //
+          if (!fopt_val)
+            fopt_val = move (v);
+        }
 
         // If we're generating a cxx{}, pass -f to override the path with
         // which the input header will be #include'd, which is relative to the
-        // output directory, with just the name of the input file.
+        // output directory by default, with the bracketed or quoted and,
+        // optionally, path-prefixed header file name. The prefix is moved
+        // from the -p option because currently the only way of controlling
+        // the quoting style (<> vs. "") moc uses is via the -f option.
         //
         // Otherwise, if we're generating a moc{} -- which is included -- pass
         // -i to prevent any #include directive from being generated for the
         // input source file (otherwise we'd get multiple definitions errors
         // if the input source file is also compiled, as is typical).
         //
-        // @@ Need to support/expose include prefix (<moc/...>). Let's
-        //    do for starters via `qt.moc.options = -p moc/`.
-        //
         if (t.is_a<cxx> ())
         {
+          // Goal: something like `-f <hello/hello.hxx>`.
+          //
           args.push_back ("-f");
-          args.push_back (sn.string ().c_str ());
+          {
+            // If true, include with quotes; otherwise include with angled
+            // brackets.
+            //
+            bool q (cast_false<bool> (bs["qt.moc.include_with_quotes"]));
+
+            string s {q ? '"' : '<'};
+
+            // If fopt_val already has a value it is the include prefix
+            // (parsed from -p) so append the source file name to
+            // it. Otherwise use just the source file name.
+            //
+            if (fopt_val)
+              s += (path (move (*fopt_val)) / sp.leaf ()).string ();
+            else
+              s += sp.leaf ().string ();
+
+            s += (q ? '"' : '>');
+
+            fopt_val = move (s);
+          }
+          args.push_back (fopt_val->c_str ());
         }
         else if (t.is_a<moc> ())
           args.push_back ("-i");
+
+        // Translate output path to relative (to working directory) for easier
+        // to read diagnostics. The input path, however, must be absolute
+        // otherwise moc will put the relative path in the depfile.
+        //
+        path relo (relative (tp));            // Output path.
+        path depfile (relo.string () + ".t"); // Depfile path.
 
         // Depfile path.
         //
