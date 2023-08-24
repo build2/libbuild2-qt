@@ -6,7 +6,7 @@ For build instructions see [`libbuild2-hello/README`](https://github.com/build2/
 
 @@ TODO Explain target types and how to use them. E.g. something like this:
 
-        moc.cxx{} is generated from hxx{} and should be compiled but can be
+        cxx{moc_*} is generated from hxx{} and should be compiled but can be
         included.
 
-        moc.moc{} is generated from cxx{} and must be included.
+        moc{} is generated from cxx{} and must be included.
