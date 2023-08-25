@@ -506,8 +506,8 @@ namespace build2
 
         append_options (args, t, "qt.moc.options");
 
-        // The value to be passed via the -f option: the bracket or quoted
-        // source file include path, e.g., `<moc/source.hxx>`. @@
+        // The value to be passed via the -f option: the bracket- or
+        // quote-enclosed source file include path, e.g., `<moc/source.hxx>`.
         //
         // Note: only used if the output is a cxx{}.
         //
@@ -541,77 +541,74 @@ namespace build2
         for (auto i (args.begin () + 1); i != args.end (); )
         {
           // Check if we are looking at a one-letter option dealing with the
-          // verious possible forms and returning nullopt if that's not the
+          // various possible forms and return nullopt if that's not the
           // case. If it is the case and val is false (option has no value),
           // return NULL. Otherwise, return the beginning of the option value
           // (issuing diagnostics and failing if the value is missing).
           //
           // In all cases, if not returning nullopt, erase the option and
-          // potentially seperate value from args.
+          // potentially separate value from args.
           //
-          //
-          auto opt = [&i] (const char n, bool val) -> optional<const char*>
+          auto opt = [&args, &i] (const char n, bool val) ->
+            optional<const char*>
           {
+            const char* a (*i);
+
+            if (a[0] != '-') // Not an option.
+              return nullopt;
+
+            // Skip the option name if found, otherwise return nullopt.
+            //
+            if (a[1] == n)
+              a += 2;
+            else if (a[1] == '-' && a[2] == n)
+              a += 3;
+            else
+              return nullopt;
+
+            optional<const char*> v; // Option value.
+
+            if (*a == '\0') // -p X | --p X
+            {
+              if (val && i != args.end () - 1)
+              {
+                v = *(i + 1);
+                i = args.erase (i, i + 2);
+              }
+              else
+                i = args.erase (i);
+            }
+            else // -pX | -p=X | --pX | --p=X
+            {
+              if (*a == '=')
+                ++a;
+
+              v = a;
+              i = args.erase (i);
+            }
+
+            if (!val)
+              return nullptr;
+
+            if (!v)
+              fail << "qt.moc.options contains a -" << n
+                   << " option without a value";
+
+            return v;
           };
 
-          if (erase)
-            i = args.erase (i);
+          if (opt ('i', false))
+            fail << "qt.moc.options contains a -i option";
+
+          if (opt ('f', true))
+            fail << "qt.moc.options contains a -f option";
+
+          optional<const char*> v (opt ('p', true));
+
+          if (v)
+            popt_val = *v;
           else
             ++i;
-
-          // @@ TODO Fail if any -f or -i options found here?
-        }
-
-        for (size_t i (args.size () - 1); i != 0; --i)
-        {
-          const char* a (args[i]);
-
-          // Skip option name if found, otherwise continue.
-          //
-          if (strncmp (a, "-p", 2) == 0)
-            a += 2;
-          else if (strncmp (a, "--p", 3) == 0)
-            a += 3;
-          else
-            continue;
-
-          // Erase the next n elements from args.
-          //
-          auto erase = [&args, i] (size_t n)
-          {
-            auto j = args.begin () + i;
-            args.erase (j, j + n);
-          };
-
-          optional<string> v; // Option value.
-
-          if (*a == '\0') // -p X | --p X
-          {
-            if (i != args.size () - 1)
-            {
-              v = args[i + 1];
-              erase (2);
-            }
-            else // No value present.
-              erase (1);
-          }
-          else // -pX | -p=X | --pX | --p=X
-          {
-            if (*a == '=')
-              ++a;
-
-            v = a;
-            erase (1);
-          }
-
-          if (!v || v->empty ()) // @@ Is empty invalid?
-            fail << "qt.moc.options contains a -p option without a value";
-
-          // @@ TMP No need to warn when we ignore a -p because it could be
-          //        from an outer scope, right?
-          //
-          if (!fopt_val)
-            fopt_val = move (v);
         }
 
         // If we're generating a cxx{}, pass -f to override the path with
@@ -640,21 +637,12 @@ namespace build2
             bool q (cast_false<bool> (bs["qt.moc.include_with_quotes"]));
 
             string s {q ? '"' : '<'};
-
-            // If fopt_val already has a value it is the include prefix
-            // (parsed from -p) so append the source file name to
-            // it. Otherwise use just the source file name.
-            //
-            if (fopt_val)
-              s += (path (move (*fopt_val)) / sp.leaf ()).string ();
-            else
-              s += sp.leaf ().string ();
-
+            s += (path (move (popt_val)) / sp.leaf ()).string ();
             s += (q ? '"' : '>');
 
             fopt_val = move (s);
           }
-          args.push_back (fopt_val->c_str ());
+          args.push_back (fopt_val.c_str ());
         }
         else if (t.is_a<moc> ())
           args.push_back ("-i");
