@@ -244,9 +244,6 @@ namespace build2
 
             if (is_lib (pt->type ()))
             {
-              // @@ TMP This actually always calls match_impl first and then
-              //        does the unmatch stuff afterwards.
-              //
               pair<bool, target_state> mr (match_complete (a,
                                                            *pt.target,
                                                            unmatch::safe));
@@ -509,18 +506,25 @@ namespace build2
 
         append_options (args, t, "qt.moc.options");
 
-        // The value to be passed via the -f option: the bracketed or quoted
-        // source file include path, e.g., `<moc/source.hxx>`. Note: only used
-        // if the output is a cxx{}.
+        // The value to be passed via the -f option: the bracket or quoted
+        // source file include path, e.g., `<moc/source.hxx>`. @@
         //
-        optional<string> fopt_val;
+        // Note: only used if the output is a cxx{}.
+        //
+        string popt_val;
 
         // Parse the -p option (source file include prefix) passed in
-        // qt.moc.options.
+        // qt.moc.options. While at it, also validate there are no -i or -f.
         //
-        // Keep the value from the last -p instance. Remove all -p instances,
-        // including the last, from args because the value will be passed to
-        // moc via the -f option (see below).
+        // Keep the value from the last -p instance. Remove all the -p
+        // instances, including the last, from args because the prefix will be
+        // incorporated in the value passed to moc via the -f option (see
+        // below).
+        //
+        // Note: we do this even if the target is moc{} (and thus nothing is
+        // included) because the qt.moc.options value is usually common for
+        // the entire project (this is in a sense parallel to the moc's
+        // behavior which will ignore -p with -i).
         //
         // Variations accepted by moc (see QCommandLineParser):
         //
@@ -529,13 +533,35 @@ namespace build2
         // --p X
         // --p=X
         //
-        // Iterate in reverse because the loop counter would have to be
-        // updated conditionally in a forward loop (don't increment after
-        // having erased). Note also that we skip the moc executable in
-        // args[0].
+        // Note also that strictly speaking we can mis-treat an option value
+        // as the option name. However, in this case, chances of a value
+        // starting with `-` are quite remote and the user can always work
+        // around it by using the --<opt>=<val> form (e.g., --x=-p).
         //
-        // @@ TODO Remove any -f or -i options found here (with warning)?
-        //
+        for (auto i (args.begin () + 1); i != args.end (); )
+        {
+          // Check if we are looking at a one-letter option dealing with the
+          // verious possible forms and returning nullopt if that's not the
+          // case. If it is the case and val is false (option has no value),
+          // return NULL. Otherwise, return the beginning of the option value
+          // (issuing diagnostics and failing if the value is missing).
+          //
+          // In all cases, if not returning nullopt, erase the option and
+          // potentially seperate value from args.
+          //
+          //
+          auto opt = [&i] (const char n, bool val) -> optional<const char*>
+          {
+          };
+
+          if (erase)
+            i = args.erase (i);
+          else
+            ++i;
+
+          // @@ TODO Fail if any -f or -i options found here?
+        }
+
         for (size_t i (args.size () - 1); i != 0; --i)
         {
           const char* a (args[i]);
@@ -563,9 +589,6 @@ namespace build2
           {
             if (i != args.size () - 1)
             {
-              // @@ TMP We're erasing something completely unrelated if -p's
-              //        value is missing. For example: `-p --x=foo`.
-              //
               v = args[i + 1];
               erase (2);
             }
@@ -581,7 +604,7 @@ namespace build2
             erase (1);
           }
 
-          if (!v || v->empty ())
+          if (!v || v->empty ()) // @@ Is empty invalid?
             fail << "qt.moc.options contains a -p option without a value";
 
           // @@ TMP No need to warn when we ignore a -p because it could be
@@ -592,17 +615,19 @@ namespace build2
         }
 
         // If we're generating a cxx{}, pass -f to override the path with
-        // which the input header will be #include'd, which is relative to the
-        // output directory by default, with the bracketed or quoted and,
+        // which the input header will be #include'd (which is relative to the
+        // output directory by default) with the brackes or quotes and,
         // optionally, path-prefixed header file name. The prefix is moved
         // from the -p option because currently the only way of controlling
-        // the quoting style (<> vs. "") moc uses is via the -f option.
+        // the quoting style (<> vs. "") is via the -f option.
         //
         // Otherwise, if we're generating a moc{} -- which is included -- pass
         // -i to prevent any #include directive from being generated for the
         // input source file (otherwise we'd get multiple definitions errors
         // if the input source file is also compiled, as is typical).
         //
+        string fopt_val;
+
         if (t.is_a<cxx> ())
         {
           // Goal: something like `-f <hello/hello.hxx>`.
