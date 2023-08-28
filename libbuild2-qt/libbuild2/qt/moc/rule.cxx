@@ -589,7 +589,7 @@ namespace build2
             {
               if (p == 3) // --p=X
               {
-                if (a[] == '=')
+                if (a[p] == '=')
                   ++p;
                 else
                   return nullopt; // E.g., --print.
