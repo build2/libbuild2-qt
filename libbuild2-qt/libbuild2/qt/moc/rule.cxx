@@ -559,53 +559,63 @@ namespace build2
 
             // Skip the option name if found, otherwise return nullopt.
             //
+            size_t p;
             if (a[1] == n)
-              a += 2;
+              p = 2;
             else if (a[1] == '-' && a[2] == n)
-              a += 3;
+              p = 3;
             else
               return nullopt;
 
-            optional<const char*> v; // Option value.
+            const char* v (nullptr); // Option value.
 
-            if (*a == '\0') // -p X | --p X
+            if (a[p] == '\0') // -p X | --p X
             {
-              if (val && i != args.end () - 1)
+              if (val)
               {
-                v = *(i + 1);
-                i = args.erase (i, i + 2);
+                i = args.erase (i); // Option.
+
+                if (i == args.end ())
+                  fail << "qt.moc.options contains " << a
+                       << " option without value";
+
+                v = *i;
+                i = args.erase (i); // Value.
               }
               else
-                i = args.erase (i);
+                i = args.erase (i); // Option.
             }
-            else // -pX | -p=X | --pX | --p=X
+            else // -pX | --p=X
             {
-              if (*a == '=')
-                ++a;
+              if (p == 3) // --p=X
+              {
+                if (a[] == '=')
+                  ++p;
+                else
+                  return nullopt; // E.g., --print.
+              }
 
-              v = a;
+              v = a + p;
               i = args.erase (i);
             }
-
-            if (!val)
-              return nullptr;
-
-            if (!v)
-              fail << "qt.moc.options contains a -" << n
-                   << " option without a value";
 
             return v;
           };
 
           if (opt ('i', false))
-            fail << "qt.moc.options contains a -i option";
+          {
+            fail << "qt.moc.options contains -i option" <<
+              info << "use moc{} target if compiling source file";
+          }
 
           if (opt ('f', true))
-            fail << "qt.moc.options contains a -f option";
+          {
+            fail << "qt.moc.options contains -f option" <<
+              info << "use -p to specify custom prefix" <<
+              info << "use qt.moc.include_with_quotes to include with quotes";
+          }
 
-          optional<const char*> v (opt ('p', true));
-
-          if (v)
+          if (optional<const char*> v = opt ('p', true))
             popt_val = *v;
           else
             ++i;
@@ -629,19 +639,18 @@ namespace build2
         {
           // Goal: something like `-f <hello/hello.hxx>`.
           //
-          args.push_back ("-f");
+          bool q (cast_false<bool> (t["qt.moc.include_with_quotes"]));
+
+          fopt_val += (q ? '"' : '<');
+          if (!popt_val.empty ())
           {
-            // If true, include with quotes; otherwise include with angled
-            // brackets.
-            //
-            bool q (cast_false<bool> (bs["qt.moc.include_with_quotes"]));
-
-            string s {q ? '"' : '<'};
-            s += (path (move (popt_val)) / sp.leaf ()).string ();
-            s += (q ? '"' : '>');
-
-            fopt_val = move (s);
+            fopt_val += popt_val;
+            fopt_val += '/';
           }
+          fopt_val += sp.leaf ().string ();
+          fopt_val += (q ? '"' : '>');
+
+          args.push_back ("-f");
           args.push_back (fopt_val.c_str ());
         }
         else if (t.is_a<moc> ())
