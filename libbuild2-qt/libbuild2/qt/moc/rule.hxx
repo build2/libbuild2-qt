@@ -7,6 +7,7 @@
 #include <libbuild2/dyndep.hxx>
 
 #include <libbuild2/c/target.hxx>    // h{} (fallback)
+#include <libbuild2/cc/module.hxx>   // cc::module
 #include <libbuild2/cxx/target.hxx>
 
 #include <libbuild2/qt/export.hxx>
@@ -23,9 +24,10 @@ namespace build2
       //
       struct data
       {
-        const uint64_t version; // qt.version
-        const exe&     ctgt;    // Moc compiler target.
-        const string&  csum;    // Moc compiler checksum.
+        const uint64_t    version; // qt.version
+        const exe&        ctgt;    // Moc compiler target.
+        const string&     csum;    // Moc compiler checksum.
+        const cc::module* cxx_mod; // The cxx module.
       };
 
       class LIBBUILD2_QT_SYMEXPORT compile_rule: public rule,

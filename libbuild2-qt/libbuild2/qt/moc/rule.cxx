@@ -204,13 +204,14 @@ namespace build2
 
               // Handle (phase two) imported libraries.
               //
-              // if (p.proj ())
-              // {
-              //   pt = search_library (a,
-              //                        sys_lib_dirs,
-              //                        usr_lib_dirs,
-              //                        p.prerequisite);
-              // }
+              if (p.proj ())
+              {
+                optional<dir_paths> usr_lib_dirs;
+                pt = cxx_mod->search_library (a,
+                                              cxx_mod->sys_lib_dirs,
+                                              usr_lib_dirs,
+                                              p.prerequisite);
+              }
 
               if (pt == nullptr)
                 pt = &p.search (t);

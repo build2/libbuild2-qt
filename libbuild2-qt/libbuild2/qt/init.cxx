@@ -197,7 +197,7 @@ namespace build2
         if (ctgt == nullptr)
           return false;
 
-        extra.set_module (new module (data {v, *ctgt, *csum}));
+        extra.set_module (new module (data {v, *ctgt, *csum, nullptr}));
       }
       else
       {
@@ -279,12 +279,6 @@ namespace build2
       if (opt)
         fail (loc) << "qt.moc does not support optional loading";
 
-      // Make sure the cxx module has been loaded since we need its target
-      // types.
-      //
-      if (first && !cast_false<bool> (rs["cxx.loaded"]))
-        fail (loc) << "cxx module must be loaded before qt.moc module";
-
       // Load qt.moc.config and share its module instance as ours.
       //
       {
@@ -294,11 +288,19 @@ namespace build2
           extra.module = move (m);
       }
 
-      // Register target types and rules.
-      //
       if (first)
       {
         module& m (extra.module_as<module> ());
+
+        // Load the cxx module.
+        //
+        m.cxx_mod = rs.find_module<cc::module> ("cxx");
+
+        if (m.cxx_mod == nullptr)
+          fail (loc) << "cxx module must be loaded before qt.moc module";
+
+        // Register target types and rules.
+        //
 
         //-
         // Target types:
