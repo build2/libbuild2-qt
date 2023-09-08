@@ -15,8 +15,13 @@ public:
 public slots:
   // Receive the number.
   //
+  // Undefined reference errors during link mean QtCore's macros weren't
+  // passed to moc which is probably a bug in the module or ./buildfile.
+  //
+#ifdef QT_CORE_LIB
   void
   recv_num (int);
+#endif
 
 public:
   // Return the stored number.

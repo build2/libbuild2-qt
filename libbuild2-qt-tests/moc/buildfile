@@ -22,9 +22,12 @@ exe{driver}: hxx{source sink} cxx{driver sink}
 exe{driver}: cxx{moc_source sink_moc} # Compiled.
 exe{driver}: moc{sink}                # Included.
 
-# Libraries.
+# Utility library through which lib{Qt*Core}'s library metadata is made
+# available to moc (see below for details).
 #
-exe{driver}: $libs
+libue{QtCoreMeta}: $libs
+
+exe{driver}: libue{QtCoreMeta}
 
 # Generate:
 #
@@ -36,12 +39,15 @@ exe{driver}: $libs
 # conventions (which recommend a `moc_` prefix for outputs generated from
 # headers).
 #
-# Add $libs as prerequisites to cause their exported options (macro
-# definitions, header search directories, etc.) to be passed to moc.
+# Add libue{QtCoreMeta} as prerequisites to cause lib{Qt*Core}'s library
+# metadata (exported options such as macro definitions, header search
+# directories, etc.) to be passed to moc. Note that we cannot pass
+# lib{Qt*Core} directly because the moc rule would be unable to choose between
+# the shared or static version.
 #
-cxx{moc_source}:                    hxx{source} $libs
-[rule_hint=qt.moc] cxx{sink_moc}:   hxx{sink}   $libs
-moc{sink}:                          cxx{sink}   $libs
+cxx{moc_source}:                    hxx{source} libue{QtCoreMeta}
+[rule_hint=qt.moc] cxx{sink_moc}:   hxx{sink}   libue{QtCoreMeta}
+moc{sink}:                          cxx{sink}   libue{QtCoreMeta}
 
 # Set the include path prefix.
 #

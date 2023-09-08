@@ -7,7 +7,12 @@ class Sink::number: public QObject
   Q_OBJECT
 
 public:
+  // Undefined reference errors during link mean QtCore's macros weren't
+  // passed to moc which is probably a bug in the module or ./buildfile.
+  //
+#ifdef QT_CORE_LIB
   Q_PROPERTY (int value MEMBER val_)
+#endif
 
 private:
   int val_ = 0;
