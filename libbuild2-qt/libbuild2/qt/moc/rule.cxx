@@ -369,7 +369,8 @@ namespace build2
           // Return true if the header has changed and nullopt if it does not
           // exist.
           //
-          auto add = [&trace, a, &bs, &t, mt] (path fp) -> optional<bool>
+          auto add = [&trace, a, &bs, &t, mt, pts_n = md.pts_n] (path fp)
+            -> optional<bool>
           {
             // If it is outside any project, or the project doesn't have such
             // an extension, assume it is a plain old C header.
@@ -383,13 +384,19 @@ namespace build2
               // Note that static prerequisites are never written to the
               // depdb.
               //
-              if (optional<bool> u = inject_existing_file (
-                    trace, "header",
-                    a, t, 0 /* pts_n */,
-                    *ft, mt,
-                    false /* fail */))
+              // @@ TMP Passing 0 for pts_n was causing "has non-noop
+              //    recipe...consider listing as static prerequisite of"
+              //    errors for QtCore's generated headers. Seems like passing
+              //    the real pts_n value is the right way to fix this?
+              //    (QtCore's generated headers then get accepted for passing
+              //    the "updated during match?" test.)
+              //
+              if (optional<bool> u = inject_existing_file (trace, "header",
+                                                           a, t, pts_n,
+                                                           *ft, mt,
+                                                           false /* fail */))
               {
-                return *u;
+                return u;
               }
             }
 
