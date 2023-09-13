@@ -572,12 +572,6 @@ namespace build2
       if (opt)
         fail (loc) << "qt.uic does not support optional loading";
 
-      // Make sure the cxx module has been loaded since we need its hxx{}
-      // target type.
-      //
-      if (first && !cast_false<bool> (rs["cxx.loaded"]))
-        fail (loc) << "cxx module must be loaded before qt.uic module";
-
       // Load qt.uic.config and share its module instance as ours.
       //
       {
@@ -591,6 +585,12 @@ namespace build2
       //
       if (first)
       {
+        // Make sure the cxx module has been loaded since we need its hxx{}
+        // target type.
+        //
+        if (!cast_false<bool> (rs["cxx.loaded"]))
+          fail (loc) << "cxx module must be loaded before qt.uic module";
+
         module& m (extra.module_as<module> ());
 
         //-

@@ -183,6 +183,8 @@ namespace build2
         //
         auto& pts (t.prerequisite_targets[a]);
         {
+          optional<dir_paths> usr_lib_dirs; // Extract lazily.
+
           // Start asynchronous matching of prerequisites. Wait with unlocked
           // phase to allow phase switching.
           //
@@ -203,19 +205,28 @@ namespace build2
               if (a.operation () != update_id)
                 continue;
 
-              // Fail if this is a lib{} because we would not be able to
-              // determine which member to match if unmatch were to fail
-              // below.
+              // Fail if this is a lib{} because we cannot possibly pick a
+              // member and matching the group will most likely produce an
+              // undesirable result (unmatch will fail, we will build both
+              // member, etc).
+              //
+              // The only sensible way out of this rabbit hole seems to be to
+              // require the user to "signal" what will be used by going
+              // through a utility library (either libul{} or libue{}).
               //
               if (p.is_a<bin::lib> ())
-                fail << "unsupported prerequisite type lib{}" <<
-                  info << "use a utility library instead";
+              {
+                fail << "unable to extract preprocessor options for "
+                     << t << " from " << p << " directly" <<
+                  info << "instead go through a \"metadata\" utility library "
+                     << "(either libul{} or libue{})" <<
+                  info << "see qt.moc module documentation for details";
+              }
 
               // Handle (phase two) imported libraries.
               //
               if (p.proj ())
               {
-                optional<dir_paths> usr_lib_dirs;
                 pt = cxx_mod->search_library (a,
                                               cxx_mod->sys_lib_dirs,
                                               usr_lib_dirs,
@@ -323,6 +334,10 @@ namespace build2
             sha256 cs;
             append_options (cs, t, "qt.moc.options");
 
+            // @@ TODO: work in library poptions.
+            // @@ TODO: collect them once here and return in match
+            //          data to reuse in perform_update.
+
             if (dd.expect (cs.string ()) != nullptr)
               l4 ([&]{trace << "options mismatch forcing update of " << t;});
           }
@@ -393,13 +408,6 @@ namespace build2
             {
               // Note that static prerequisites are never written to the
               // depdb.
-              //
-              // @@ TMP Passing 0 for pts_n was causing "has non-noop
-              //    recipe...consider listing as static prerequisite of"
-              //    errors for QtCore's generated headers. Seems like passing
-              //    the real pts_n value is the right way to fix this?
-              //    (QtCore's generated headers then get accepted for passing
-              //    the "updated during match?" test.)
               //
               if (optional<bool> u = inject_existing_file (trace, "header",
                                                            a, t, pts_n,
@@ -539,45 +547,45 @@ namespace build2
               continue;
 
             // The prerequisite's target. Unmatched library targets were moved
-            // to the the data field during match.
+            // to the data member during match.
             //
-            const target* pt (
+            if (const target* pt =
                 (p.include & prerequisite_target::include_target) == 0
                 ? p.target
-                : reinterpret_cast<target*> (p.data));
-
-            bool la (false); // True if this is a static library.
-
-            // Skip if this is not a library. (Note that this cannot be a
-            // lib{} because those are rejected during match.)
-            //
-            if ((     pt->is_a<libs>())  ||
-                (la = pt->is_a<liba>())  ||
-                (la = pt->is_a<libul>()) ||
-                (la = pt->is_a<libux>()))
+                : reinterpret_cast<target*> (p.data))
             {
-              // If this is libul{}, get the matched member (see
-              // bin::libul_rule for details).
-              //
-              const file& f ((pt->is_a<libul> ()
-                              ? pt->prerequisite_targets[a].back ().target
-                              : pt)->as<file> ());
+              bool la (false); // True if this is a static library.
 
-              cc::compile_rule::appended_libraries ls;
-
-              // Pass true for `common` in order to get just the common
-              // interface options if possible, and false for `original` in
-              // order to get translation of e.g. -I to -isystem if
-              // appropriate.
+              // Skip if this is not a library. (Note that this cannot be a
+              // lib{} because those are rejected during match.)
               //
-              cxx_mod->append_library_options (
+              if ((     pt->is_a<libs>())  ||
+                  (la = pt->is_a<liba>())  ||
+                  (la = pt->is_a<libul>()) ||
+                  (la = pt->is_a<libux>()))
+              {
+                // If this is libul{}, get the matched member (see
+                // bin::libul_rule for details).
+                //
+                const file& f ((pt->is_a<libul> ()
+                                ? pt->prerequisite_targets[a].back ().target
+                                : pt)->as<file> ());
+
+                cc::compile_rule::appended_libraries ls;
+
+                // Pass true for `common` in order to get just the common
+                // interface options if possible, and true for `original` in
+                // order not to translate -I to -isystem.
+                //
+                cxx_mod->append_library_options (
                   ls,
                   lib_opts,
                   bs,
                   a, f, la,
                   link_info (bs, link_type (f).type),
                   true /* common */,
-                  false /* original */);
+                  true /* original */);
+              }
             }
           }
 
