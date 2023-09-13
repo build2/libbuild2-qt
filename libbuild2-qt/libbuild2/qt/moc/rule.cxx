@@ -39,6 +39,8 @@ namespace build2
 
         timestamp mt;
 
+        strings lib_opts; // Prerequisite library options.
+
         const compile_rule& rule;
 
         target_state
@@ -313,6 +315,8 @@ namespace build2
         //
         fsdir_rule::perform_update_direct (a, t);
 
+        match_data md (*this, s, t.prerequisite_targets[a].size ());
+
         // We use depdb to track changes to the input file name, options,
         // compiler, etc.
         //
@@ -332,11 +336,68 @@ namespace build2
           //
           {
             sha256 cs;
+
             append_options (cs, t, "qt.moc.options");
 
-            // @@ TODO: work in library poptions.
-            // @@ TODO: collect them once here and return in match
-            //          data to reuse in perform_update.
+            // Get library prerequisite options (saving them in match_data for
+            // reuse in perform_update()) and then include them in the
+            // checksum.
+            //
+            for (size_t i (0); i != md.pts_n; ++i)
+            {
+              prerequisite_target p (pts[i]);
+
+              if (p.adhoc ())
+                continue;
+
+              // The prerequisite's target. Unmatched library targets were
+              // moved to the data member during match.
+              //
+              if (const target* pt =
+                  (p.include & prerequisite_target::include_target) == 0
+                  ? p.target
+                  : reinterpret_cast<target*> (p.data))
+              {
+                using namespace bin;
+
+                bool la (false); // True if this is a static library.
+
+                // Skip if this is not a library. (Note that this cannot be a
+                // lib{} because those are rejected during match.)
+                //
+                if ((     pt->is_a<libs>())  ||
+                    (la = pt->is_a<liba>())  ||
+                    (la = pt->is_a<libul>()) ||
+                    (la = pt->is_a<libux>()))
+                {
+                  // If this is libul{}, get the matched member (see
+                  // bin::libul_rule for details).
+                  //
+                  const file& f ((pt->is_a<libul> ()
+                                  ? pt->prerequisite_targets[a].back ().target
+                                  : pt)->as<file> ());
+
+                  cc::compile_rule::appended_libraries ls;
+
+                  // Pass true for `common` in order to get just the common
+                  // interface options if possible, and true for `original` in
+                  // order not to translate -I to -isystem.
+                  //
+                  cxx_mod->append_library_options (
+                    ls,
+                    md.lib_opts,
+                    bs,
+                    a, f, la,
+                    link_info (bs, link_type (f).type),
+                    true /* common */,
+                    true /* original */);
+                }
+              }
+            }
+
+            // Include library options in the checksum.
+            //
+            append_options (cs, md.lib_opts);
 
             if (dd.expect (cs.string ()) != nullptr)
               l4 ([&]{trace << "options mismatch forcing update of " << t;});
@@ -373,15 +434,11 @@ namespace build2
           // Skip library prerequisites, both unmatched (never updated) and
           // matched (updated only during execute).
           //
-          // @@ TODO Detect changed export.poptions and set u=true if so.
-          //
           if (((p.include & include_unmatch) != 0) || is_lib (p->type ()))
             continue;
 
           u = update (trace, a, *p.target, u ? timestamp_unknown : mt) || u;
         }
-
-        match_data md (*this, s, t.prerequisite_targets[a].size ());
 
         // Verify the header paths in the depdb unless we're already updating
         // (in which case they will be overwritten in perform_update()).
@@ -531,67 +588,8 @@ namespace build2
 
         append_options (args, t, "qt.moc.options");
 
-        // Append library prerequisite options.
-        //
-        strings lib_opts;
-        {
-          using namespace bin;
-
-          auto& pts (t.prerequisite_targets[a]);
-
-          for (size_t i (0); i != md.pts_n; ++i)
-          {
-            prerequisite_target p (pts[i]);
-
-            if (p.adhoc ())
-              continue;
-
-            // The prerequisite's target. Unmatched library targets were moved
-            // to the data member during match.
-            //
-            if (const target* pt =
-                (p.include & prerequisite_target::include_target) == 0
-                ? p.target
-                : reinterpret_cast<target*> (p.data))
-            {
-              bool la (false); // True if this is a static library.
-
-              // Skip if this is not a library. (Note that this cannot be a
-              // lib{} because those are rejected during match.)
-              //
-              if ((     pt->is_a<libs>())  ||
-                  (la = pt->is_a<liba>())  ||
-                  (la = pt->is_a<libul>()) ||
-                  (la = pt->is_a<libux>()))
-              {
-                // If this is libul{}, get the matched member (see
-                // bin::libul_rule for details).
-                //
-                const file& f ((pt->is_a<libul> ()
-                                ? pt->prerequisite_targets[a].back ().target
-                                : pt)->as<file> ());
-
-                cc::compile_rule::appended_libraries ls;
-
-                // Pass true for `common` in order to get just the common
-                // interface options if possible, and true for `original` in
-                // order not to translate -I to -isystem.
-                //
-                cxx_mod->append_library_options (
-                  ls,
-                  lib_opts,
-                  bs,
-                  a, f, la,
-                  link_info (bs, link_type (f).type),
-                  true /* common */,
-                  true /* original */);
-              }
-            }
-          }
-
-          for (const string& o: lib_opts)
-            args.push_back (o.c_str ());
-        }
+        for (const string& o: md.lib_opts)
+          args.push_back (o.c_str ());
 
         // The value to be passed via the -f option: the bracket- or
         // quote-enclosed source file include path, e.g., `<moc/source.hxx>`.
