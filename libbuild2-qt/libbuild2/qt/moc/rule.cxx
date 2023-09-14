@@ -339,7 +339,16 @@ namespace build2
 
             append_options (cs, t, "qt.moc.options");
 
-            // Get library prerequisite options (saving them in match_data for
+            // Include c.poptions, cxx.poptions, and the system header
+            // directory paths in the checksum.
+            //
+            append_options (cs, t, cxx_mod->c_poptions);
+            append_options (cs, t, cxx_mod->x_poptions);
+
+            for (const dir_path& d: cxx_mod->sys_hdr_dirs)
+              append_option (cs, d.string ().c_str ());
+
+            // Get prerequisite library options (saving them in match_data for
             // reuse in perform_update()) and then include them in the
             // checksum.
             //
@@ -395,7 +404,7 @@ namespace build2
               }
             }
 
-            // Include library options in the checksum.
+            // Include prerequisite library options in the checksum.
             //
             append_options (cs, md.lib_opts);
 
@@ -588,8 +597,20 @@ namespace build2
 
         append_options (args, t, "qt.moc.options");
 
+        // Add c.poptions, cxx.poptions, prerequisite library options, and
+        // -I's for the system header directories.
+        //
+        append_options (args, t, cxx_mod->c_poptions);
+        append_options (args, t, cxx_mod->x_poptions);
+
         for (const string& o: md.lib_opts)
           args.push_back (o.c_str ());
+
+        for (const dir_path& d: cxx_mod->sys_hdr_dirs)
+        {
+          args.push_back ("-I");
+          args.push_back (d.string ().c_str ());
+        }
 
         // The value to be passed via the -f option: the bracket- or
         // quote-enclosed source file include path, e.g., `<moc/source.hxx>`.
