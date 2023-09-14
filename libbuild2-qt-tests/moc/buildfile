@@ -19,8 +19,14 @@ exe{driver}: hxx{source sink} cxx{driver sink}
 #
 # moc{*} are generated from cxx{} and are included.
 #
-exe{driver}: cxx{moc_source sink_moc} # Compiled.
-exe{driver}: moc{sink}                # Included.
+# Note that cxx{sink_moc} is included instead of compiled, as is
+# conventional. See moc{sink}'s dependencies below to see one of the
+# undesirable consequences but also the workaround to use if there is no other
+# choice.
+#
+exe{driver}: cxx{moc_source}                # Compiled.
+exe{driver}: cxx{sink_moc}: include = adhoc # Included.
+exe{driver}: moc{sink}                      # Included.
 
 # Utility library through which lib{Qt*Core}'s library metadata (poptions) is
 # made available to moc (see below for details).
@@ -45,9 +51,17 @@ exe{driver}: libue{QtCoreMeta}
 # lib{Qt*Core} directly because the moc rule would be unable to choose between
 # the shared or static version.
 #
+# Note moc{sink}'s extra dependency: this is a complication of cxx{sink_moc}
+# being included instead of compiled, as is conventional. cxx{sink} includes
+# and thus depends on cxx{sink_moc}. And given that moc{sink} depends on
+# cxx{sink}, it also depends on cxx{sink_moc} (transitively). But due to the
+# way moc extracts dependency information (as a byproduct of compilation), a
+# moc output's generated dependencies have to be declared explicitly otherwise
+# there is a very good chance moc will fail from a clean build state.
+#
 cxx{moc_source}:                    hxx{source} libue{QtCoreMeta}
 [rule_hint=qt.moc] cxx{sink_moc}:   hxx{sink}   libue{QtCoreMeta}
-moc{sink}:                          cxx{sink}   libue{QtCoreMeta}
+moc{sink}:                          cxx{sink}   libue{QtCoreMeta} cxx{sink_moc}
 
 # Set the include path prefix.
 #
