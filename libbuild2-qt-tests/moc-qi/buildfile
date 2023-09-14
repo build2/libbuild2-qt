@@ -31,7 +31,7 @@ exe{driver}: $libs
 #
 cxx{moc_source}: hxx{source}
 cxx{moc_sink}:   hxx{sink}
-moc{sink}:       cxx{sink}
+moc{sink}:       cxx{sink} cxx{moc_sink}
 
 qt.moc.include_with_quotes = true
 
