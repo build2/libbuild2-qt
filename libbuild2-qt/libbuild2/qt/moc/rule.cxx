@@ -135,6 +135,21 @@ namespace build2
         return dyndep_rule::map_extension (bs, n, e, nullptr);
       }
 
+      // Return true if the specified class of options should be passed to
+      // moc. Valid option classes are `poptions`, `predefs`, and
+      // `sys_hdr_dirs`. Each option class is associated with a variable named
+      // `qt.moc.auto_<class>`.
+      //
+      static bool pass_moc_opts (const target& t, const char* oc)
+      {
+        // Fall back to qt.moc.auto_preprocessor if the variable is null or
+        // undefined.
+        //
+        lookup l (t[string ("qt.moc.auto_") + oc]);
+        return l ? cast<bool> (l)
+                 : cast<bool> (t["qt.moc.auto_preprocessor"]);
+      }
+
       recipe compile_rule::
       apply (action a, target& xt, match_extra& me) const
       {
@@ -398,8 +413,11 @@ namespace build2
 
             // Include cc.poptions and cxx.poptions.
             //
-            append_options (cs, t, cxx_mod->c_poptions);
-            append_options (cs, t, cxx_mod->x_poptions);
+            if (pass_moc_opts (t, "poptions"))
+            {
+              append_options (cs, t, cxx_mod->c_poptions);
+              append_options (cs, t, cxx_mod->x_poptions);
+            }
 
             // Include prerequisite library options in the checksum.
             //
@@ -407,8 +425,11 @@ namespace build2
 
             // Include the system header directory paths in the checksum.
             //
-            for (const dir_path& d: cxx_mod->sys_hdr_dirs)
-              append_option (cs, d.string ().c_str ());
+            if (pass_moc_opts (t, "sys_hdr_dirs"))
+            {
+              for (const dir_path& d: cxx_mod->sys_hdr_dirs)
+                append_option (cs, d.string ().c_str ());
+            }
 
             if (dd.expect (cs.string ()) != nullptr)
               l4 ([&]{trace << "options mismatch forcing update of " << t;});
@@ -610,16 +631,22 @@ namespace build2
         // Add cc.poptions, cxx.poptions, prerequisite library options, and
         // -I's for the system header directories.
         //
-        append_options (args, t, cxx_mod->c_poptions);
-        append_options (args, t, cxx_mod->x_poptions);
+        if (pass_moc_opts (t, "poptions"))
+        {
+          append_options (args, t, cxx_mod->c_poptions);
+          append_options (args, t, cxx_mod->x_poptions);
+        }
 
         for (const string& o: md.lib_opts)
           args.push_back (o.c_str ());
 
-        for (const dir_path& d: cxx_mod->sys_hdr_dirs)
+        if (pass_moc_opts (t, "sys_hdr_dirs"))
         {
-          args.push_back ("-I");
-          args.push_back (d.string ().c_str ());
+          for (const dir_path& d: cxx_mod->sys_hdr_dirs)
+          {
+            args.push_back ("-I");
+            args.push_back (d.string ().c_str ());
+          }
         }
 
         // The value to be passed via the -f option: the bracket- or
@@ -739,7 +766,7 @@ namespace build2
 
         // If we're generating a cxx{}, pass -f to override the path with
         // which the input header will be #include'd (which is relative to the
-        // output directory by default) with the brackes or quotes and,
+        // output directory by default) with the brackets or quotes and,
         // optionally, path-prefixed header file name. The prefix is moved
         // from the -p option because currently the only way of controlling
         // the quoting style (<> vs. "") is via the -f option.

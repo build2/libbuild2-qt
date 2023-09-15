@@ -247,13 +247,26 @@ namespace build2
         //
         variable_pool& vp (bs.var_pool (true /* public */));
 
-        // qt.moc.auto_preprocessor ?= true
-        // qt.moc.auto_poptions     ?= [null] (project poptions)
-        // qt.moc.auto_predefs      ?= [null]
-        // qt.moc.auto_sys_hdr_dirs ?= [null]
+        // Variables controlling the options automatically passed to moc (as
+        // opposed to "manually" via qt.moc.options).
         //
-        // If [null], then takes the value of qt.moc.auto_preprocessor.
+        // qt.moc.auto_preprocessor: Fallback value used if any of the other
+        //                           variables are null or undefined.
+        //
+        // qt.moc.auto_poptions:     Project poptions (*.poptions).
+        //
+        // qt.moc.auto_predefs:      Compiler's pre-defined macros.
+        //
+        // qt.moc.auto_sys_hdr_dirs: System header directories.
+        //
+        vp.insert<bool> ("qt.moc.auto_preprocessor");
+        vp.insert<bool> ("qt.moc.auto_poptions");
+        vp.insert<bool> ("qt.moc.auto_predefs");
+        vp.insert<bool> ("qt.moc.auto_sys_hdr_dirs");
 
+        // If true, header outputs include their source headers with quotes
+        // instead of brackets.
+        //
         vp.insert<bool> ("qt.moc.include_with_quotes");
 
         // Configuration.
@@ -264,6 +277,13 @@ namespace build2
         //
         config::append_config<strings> (rs, rs, "qt.moc.options", nullptr);
       }
+
+      // Assign default values to variables.
+      //
+      bs.assign ("qt.moc.auto_preprocessor") = true;
+      bs.assign ("qt.moc.auto_poptions")     = nullptr;
+      bs.assign ("qt.moc.auto_predefs")      = nullptr;
+      bs.assign ("qt.moc.auto_sys_hdr_dirs") = nullptr;
 
       return true;
     }
