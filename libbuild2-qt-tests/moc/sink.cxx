@@ -34,5 +34,4 @@ num () const
   return num_->property ("value").value<int> ();
 }
 
-#include <moc/sink_moc.cxx>
 #include <moc/sink.moc>
