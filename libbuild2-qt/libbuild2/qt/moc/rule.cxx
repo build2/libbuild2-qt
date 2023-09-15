@@ -317,6 +317,61 @@ namespace build2
 
         match_data md (*this, s, t.prerequisite_targets[a].size ());
 
+        // Get prerequisite library options for change tracking saving them in
+        // match_data for reuse in perform_update().
+        //
+        for (size_t i (0); i != md.pts_n; ++i)
+        {
+          prerequisite_target p (pts[i]);
+
+          if (p.adhoc ())
+            continue;
+
+          // The prerequisite's target. Unmatched library targets were moved
+          // to the data member during match.
+          //
+          if (const target* pt =
+              (p.include & prerequisite_target::include_target) == 0
+              ? p.target
+              : reinterpret_cast<target*> (p.data))
+          {
+            using namespace bin;
+
+            bool la (false); // True if this is a static library.
+
+            // Skip if this is not a library. (Note that this cannot be a
+            // lib{} because those are rejected during match.)
+            //
+            if ((     pt->is_a<libs>())  ||
+                (la = pt->is_a<liba>())  ||
+                (la = pt->is_a<libul>()) ||
+                (la = pt->is_a<libux>()))
+            {
+              // If this is libul{}, get the matched member (see
+              // bin::libul_rule for details).
+              //
+              const file& f ((pt->is_a<libul> ()
+                              ? pt->prerequisite_targets[a].back ().target
+                              : pt)->as<file> ());
+
+              cc::compile_rule::appended_libraries ls;
+
+              // Pass true for `common` in order to get just the common
+              // interface options if possible, and true for `original` in
+              // order not to translate -I to -isystem.
+              //
+              cxx_mod->append_library_options (
+                ls,
+                md.lib_opts,
+                bs,
+                a, f, la,
+                link_info (bs, link_type (f).type),
+                true /* common */,
+                true /* original */);
+            }
+          }
+        }
+
         // We use depdb to track changes to the input file name, options,
         // compiler, etc.
         //
@@ -337,76 +392,23 @@ namespace build2
           {
             sha256 cs;
 
+            // Note: see below for the order.
+            //
             append_options (cs, t, "qt.moc.options");
 
-            // Include c.poptions, cxx.poptions, and the system header
-            // directory paths in the checksum.
+            // Include cc.poptions and cxx.poptions.
             //
             append_options (cs, t, cxx_mod->c_poptions);
             append_options (cs, t, cxx_mod->x_poptions);
 
-            for (const dir_path& d: cxx_mod->sys_hdr_dirs)
-              append_option (cs, d.string ().c_str ());
-
-            // Get prerequisite library options (saving them in match_data for
-            // reuse in perform_update()) and then include them in the
-            // checksum.
-            //
-            for (size_t i (0); i != md.pts_n; ++i)
-            {
-              prerequisite_target p (pts[i]);
-
-              if (p.adhoc ())
-                continue;
-
-              // The prerequisite's target. Unmatched library targets were
-              // moved to the data member during match.
-              //
-              if (const target* pt =
-                  (p.include & prerequisite_target::include_target) == 0
-                  ? p.target
-                  : reinterpret_cast<target*> (p.data))
-              {
-                using namespace bin;
-
-                bool la (false); // True if this is a static library.
-
-                // Skip if this is not a library. (Note that this cannot be a
-                // lib{} because those are rejected during match.)
-                //
-                if ((     pt->is_a<libs>())  ||
-                    (la = pt->is_a<liba>())  ||
-                    (la = pt->is_a<libul>()) ||
-                    (la = pt->is_a<libux>()))
-                {
-                  // If this is libul{}, get the matched member (see
-                  // bin::libul_rule for details).
-                  //
-                  const file& f ((pt->is_a<libul> ()
-                                  ? pt->prerequisite_targets[a].back ().target
-                                  : pt)->as<file> ());
-
-                  cc::compile_rule::appended_libraries ls;
-
-                  // Pass true for `common` in order to get just the common
-                  // interface options if possible, and true for `original` in
-                  // order not to translate -I to -isystem.
-                  //
-                  cxx_mod->append_library_options (
-                    ls,
-                    md.lib_opts,
-                    bs,
-                    a, f, la,
-                    link_info (bs, link_type (f).type),
-                    true /* common */,
-                    true /* original */);
-                }
-              }
-            }
-
             // Include prerequisite library options in the checksum.
             //
             append_options (cs, md.lib_opts);
+
+            // Include the system header directory paths in the checksum.
+            //
+            for (const dir_path& d: cxx_mod->sys_hdr_dirs)
+              append_option (cs, d.string ().c_str ());
 
             if (dd.expect (cs.string ()) != nullptr)
               l4 ([&]{trace << "options mismatch forcing update of " << t;});
@@ -595,9 +597,17 @@ namespace build2
         const process_path& pp (ctgt.process_path ());
         cstrings args {pp.recall_string ()};
 
+        // The correct order of options is as follows:
+        //
+        // 1. predefs (via --include; still @@ TODO)
+        // 2. qt.moc.options
+        // 3. project poptions (cc.poptions, cxx.poptions)
+        // 4. library poptions (*.export.poptions)
+        // 5. sys_hdr_dirs
+        //
         append_options (args, t, "qt.moc.options");
 
-        // Add c.poptions, cxx.poptions, prerequisite library options, and
+        // Add cc.poptions, cxx.poptions, prerequisite library options, and
         // -I's for the system header directories.
         //
         append_options (args, t, cxx_mod->c_poptions);

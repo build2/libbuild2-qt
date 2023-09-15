@@ -247,6 +247,13 @@ namespace build2
         //
         variable_pool& vp (bs.var_pool (true /* public */));
 
+        // qt.moc.auto_preprocessor ?= true
+        // qt.moc.auto_poptions     ?= [null] (project poptions)
+        // qt.moc.auto_predefs      ?= [null]
+        // qt.moc.auto_sys_hdr_dirs ?= [null]
+        //
+        // If [null], then takes the value of qt.moc.auto_preprocessor.
+
         vp.insert<bool> ("qt.moc.include_with_quotes");
 
         // Configuration.
