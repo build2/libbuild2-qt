@@ -147,7 +147,7 @@ namespace build2
         //
         lookup l (t[string ("qt.moc.auto_") + oc]);
         return l ? cast<bool> (l)
-                 : cast<bool> (t["qt.moc.auto_preprocessor"]);
+                 : cast_true<bool> (t["qt.moc.auto_preprocessor"]);
       }
 
       recipe compile_rule::

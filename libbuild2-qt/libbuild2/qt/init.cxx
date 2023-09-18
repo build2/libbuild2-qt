@@ -251,13 +251,16 @@ namespace build2
         // opposed to "manually" via qt.moc.options).
         //
         // qt.moc.auto_preprocessor: Fallback value used if any of the other
-        //                           variables are null or undefined.
+        //                           variables are null or undefined. Default
+        //                           is true.
         //
-        // qt.moc.auto_poptions:     Project poptions (*.poptions).
+        // qt.moc.auto_poptions:     Project poptions ({cc,cxx}.poptions).
         //
-        // qt.moc.auto_predefs:      Compiler's pre-defined macros.
+        // qt.moc.auto_predefs:      C++ compiler's pre-defined macros.
         //
-        // qt.moc.auto_sys_hdr_dirs: System header directories.
+        // qt.moc.auto_sys_hdr_dirs: C++ compiler's system header directories.
+        //
+        // @@ TODO: may make sense to store the variable in the module.
         //
         vp.insert<bool> ("qt.moc.auto_preprocessor");
         vp.insert<bool> ("qt.moc.auto_poptions");
@@ -277,13 +280,6 @@ namespace build2
         //
         config::append_config<strings> (rs, rs, "qt.moc.options", nullptr);
       }
-
-      // Assign default values to variables.
-      //
-      bs.assign ("qt.moc.auto_preprocessor") = true;
-      bs.assign ("qt.moc.auto_poptions")     = nullptr;
-      bs.assign ("qt.moc.auto_predefs")      = nullptr;
-      bs.assign ("qt.moc.auto_sys_hdr_dirs") = nullptr;
 
       return true;
     }
