@@ -39,11 +39,10 @@ namespace build2
       // the group causes updating each of its members individually. So, in a
       // sense, this group is a special kind of alias for its members.
       //
-      class LIBBUILD2_QT_SYMEXPORT automoc: public mtime_target // @@ target
+      class LIBBUILD2_QT_SYMEXPORT automoc: public target
       {
       public:
-        // @@ Use cc instead of target.
-        vector<const target*> members; // Layout compatible with group_view.
+        vector<const cc::cc*> members; // Layout compatible with group_view.
         action members_action; // Action on which members were resolved.
         size_t members_on = 0; // Operation number on which members were resolved.
 
@@ -56,7 +55,7 @@ namespace build2
         }
 
         automoc (context& c, dir_path d, dir_path o, string n)
-            : mtime_target (c, move (d), move (o), move (n))
+            : target (c, move (d), move (o), move (n))
         {
           dynamic_type = &static_type;
         }

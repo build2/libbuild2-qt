@@ -51,7 +51,7 @@ namespace build2
         size_t n (members.size ());
         return group_view {
           n != 0
-          ? members.data ()
+          ? reinterpret_cast<const target* const*> (members.data ())
           : reinterpret_cast<const target* const*> (this),
           n};
       }
@@ -59,7 +59,7 @@ namespace build2
       const target_type automoc::static_type
       {
         "automoc",
-        &mtime_target::static_type,
+        &target::static_type,
         &target_factory<automoc>,
         nullptr,
         nullptr,
