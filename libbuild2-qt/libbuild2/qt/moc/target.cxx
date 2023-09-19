@@ -22,6 +22,8 @@ namespace build2
         target_type::flag::none
       };
 
+      // automoc
+      //
       group_view automoc::
       group_members (action a) const
       {

@@ -30,12 +30,19 @@ namespace build2
       };
 
       // A see-through group which is dynamically populated with a cxx{moc_*}
-      // or moc{} target member for each hxx{} or cxx{} prerequisite that
-      // needs to be moc'd.
+      // and/or moc{} target members for each hxx{} or cxx{} prerequisite that
+      // needs to be compiled by moc.
       //
-      class LIBBUILD2_QT_SYMEXPORT automoc: public mtime_target
+      // Note that this group implements an "inverse" semantics. Normally,
+      // updating a group's members will delegate to the group recipe (via
+      // special group_recipe). Here, however, we do the opposite: updating
+      // the group causes updating each of its members individually. So, in a
+      // sense, this group is a special kind of alias for its members.
+      //
+      class LIBBUILD2_QT_SYMEXPORT automoc: public mtime_target // @@ target
       {
       public:
+        // @@ Use cc instead of target.
         vector<const target*> members; // Layout compatible with group_view.
         action members_action; // Action on which members were resolved.
         size_t members_on = 0; // Operation number on which members were resolved.
