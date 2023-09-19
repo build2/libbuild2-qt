@@ -329,8 +329,12 @@ namespace build2
         // Target types:
         //
         //   `moc{}` -- C++ source file generated from C++ source file.
-        //-
+        //
+        //   `automoc{}` -- Dynamic group of headers and source files that are
+        //                  to be compiled by moc.
+        //
         rs.insert_target_type<qt::moc::moc> ();
+        rs.insert_target_type<qt::moc::automoc> ();
 
         //-
         // Rules:
