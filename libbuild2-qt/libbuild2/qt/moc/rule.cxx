@@ -863,6 +863,15 @@ namespace build2
                 true /* dynamic */,
                 map_ext, h::static_type).first)
             {
+              // Do not store the target itself in the depdb. This happens
+              // when moc doesn't realise that its input file is including its
+              // output file and then declares the latter as a prerequisite of
+              // itself. (Note that for this to work the target must come
+              // before the prerequisites in the depfile.)
+              //
+              if (ft == &t)
+                return;
+
               // Do not store static prerequisites in the depdb.
               //
               {
