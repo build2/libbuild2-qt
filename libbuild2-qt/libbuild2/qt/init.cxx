@@ -11,6 +11,7 @@
 
 #include <libbuild2/qt/moc/module.hxx>
 #include <libbuild2/qt/moc/target.hxx>
+#include <libbuild2/qt/moc/automoc-rule.hxx>
 
 #include <libbuild2/qt/rcc/module.hxx>
 #include <libbuild2/qt/rcc/target.hxx>
@@ -284,6 +285,11 @@ namespace build2
       return true;
     }
 
+    namespace moc
+    {
+      static const automoc_rule automoc_rule_;
+    }
+
     // The `qt.moc` module.
     //
     bool
@@ -330,10 +336,10 @@ namespace build2
         //
         //   `moc{}` -- C++ source file generated from C++ source file.
         //
-        //   `automoc{}` -- Dynamic group of moc outputs (cxx{} and moc{})
-        //                  that are determined by scanning prerequisite
-        //                  headers and source files in order to detect
-        //                  which ones need to be compiled by moc.
+        //   `automoc{}` -- Dynamic group of moc outputs (cxx{moc_*} and
+        //                  moc{}) that are discovered by scanning
+        //                  prerequisite headers and source files for the
+        //                  presence of Qt meta-object macros.
         //
         rs.insert_target_type<qt::moc::moc> ();
         rs.insert_target_type<qt::moc::automoc> ();
@@ -342,7 +348,13 @@ namespace build2
         // Rules:
         //
         //   `qt.moc.compile` -- Compile a C++ header or source file.
-        //-
+        //
+        //   `qt.moc.automoc` -- Scan an automoc{} target's prerequisite
+        //                       header and source files for the presence of
+        //                       Qt meta-object macros, create moc output
+        //                       targets for those that match, and delegate
+        //                       updating them to the qt.moc.compile rule.
+        //
         rs.insert_rule<cxx::cxx> (perform_update_id,   "qt.moc.compile", m);
         rs.insert_rule<cxx::cxx> (perform_clean_id,    "qt.moc.compile", m);
         rs.insert_rule<cxx::cxx> (configure_update_id, "qt.moc.compile", m);
@@ -350,6 +362,14 @@ namespace build2
         rs.insert_rule<qt::moc::moc> (perform_update_id,   "qt.moc.compile", m);
         rs.insert_rule<qt::moc::moc> (perform_clean_id,    "qt.moc.compile", m);
         rs.insert_rule<qt::moc::moc> (configure_update_id, "qt.moc.compile", m);
+
+        rs.insert_rule<qt::moc::automoc> (
+          perform_update_id,   "qt.moc.automoc", automoc_rule_);
+        rs.insert_rule<qt::moc::automoc> (
+          perform_clean_id,    "qt.moc.automoc", automoc_rule_);
+        rs.insert_rule<qt::moc::automoc> (
+          configure_update_id, "qt.moc.automoc", automoc_rule_);
+
       }
 
       return true;
