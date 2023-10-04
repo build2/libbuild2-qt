@@ -6,6 +6,7 @@
 #include <libbuild2/module.hxx>
 
 #include <libbuild2/qt/moc/rule.hxx>
+#include <libbuild2/qt/moc/automoc-rule.hxx>
 
 namespace build2
 {
@@ -15,7 +16,8 @@ namespace build2
     {
       class module: public build2::module,
                     public virtual data,
-                    public compile_rule
+                    public compile_rule,
+                    public automoc_rule
       {
       public:
         explicit module (data&& d): data (move (d)), compile_rule (move (d)) {}

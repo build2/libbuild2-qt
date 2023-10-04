@@ -11,7 +11,6 @@
 
 #include <libbuild2/qt/moc/module.hxx>
 #include <libbuild2/qt/moc/target.hxx>
-#include <libbuild2/qt/moc/automoc-rule.hxx>
 
 #include <libbuild2/qt/rcc/module.hxx>
 #include <libbuild2/qt/rcc/target.hxx>
@@ -285,11 +284,6 @@ namespace build2
       return true;
     }
 
-    namespace moc
-    {
-      static const automoc_rule automoc_rule_; // @@ Move to module
-    }
-
     // The `qt.moc` module.
     //
     bool
@@ -355,8 +349,8 @@ namespace build2
         //                       targets for those that match, and delegate
         //                       updating them to the qt.moc.compile rule.
         //
-        moc::compile_rule& c (m);
-        moc::automoc_rule& a (m);
+        qt::moc::compile_rule& c (m);
+        qt::moc::automoc_rule& a (m);
 
         rs.insert_rule<cxx::cxx> (perform_update_id,   "qt.moc.compile", c);
         rs.insert_rule<cxx::cxx> (perform_clean_id,    "qt.moc.compile", c);

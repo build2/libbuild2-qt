@@ -47,61 +47,99 @@ namespace build2
         // The overall plan is as follows:
         //
         // 1. Match and update sources and headers (we need to update because
-        //    we scan them), and collect all the library prerequisite (because
-        //    we need to propagate them to prerequisites of dependencies that
-        //    we synthesize).
+        //    we scan them), and collect all the library prerequisites
+        //    (because we need to propagate them to prerequisites of
+        //    dependencies that we synthesize).
         //
         // 2. Scan sources and headers for meta-object macros. Those that
         //    contain such macros are made members of this group and for them
-        //    we synthesize a dependecy and match the moc compile rule.
+        //    we synthesize a dependency and match the moc compile rule.
 
-        // Match prerequisites.
+        // Match and update header and source file prerequisites and collect
+        // library prerequisites.
         //
-        // @@ TODO If we could do something like match_direct_async() here we
-        //         wouldn't have to execute any prereqs in perform() because
-        //         it would be delegated to the moc compile rule. As it stands
-        //         we are executing all prereqs, even the ones that don't need
-        //         to get compiled by moc.
-        //
-        // @@ Need to fail if see any ad hoc prerequisites (since perform
-        //    is not normally executed).
-        //
-        // @@ Do match_direct().
-        //
-        match_prerequisite_members (a, g);
-
         auto& pts (g.prerequisite_targets[a]);
         vector<prerequisite> lib_prereqs;
-
-        // Update header and source file prerequisites now to ensure they all
-        // exist before we do the moc scan.
-        //
-        // But first mark header and source file prerequisites with
-        // include_udm (for update_during_match_prerequisites()) and collect
-        // library prerequisites while we're at it.
-        //
-        for (prerequisite_target& pt: pts)
         {
-          using namespace bin;
+          // Wait with unlocked phase to allow phase switching.
+          //
+          wait_guard wg (ctx, ctx.count_busy (), g[a].task_count, true);
 
-          // @@ Fail if see lib{}, like in compile rule.
-
-          if (pt->is_a<hxx> () || pt->is_a<cxx> ())
+          for (const prerequisite_member& p: group_prerequisite_members (a, g))
           {
-            pt.include |= prerequisite_target::include_udm;
+            using namespace bin;
+
+            include_type pi (include (a, g, p));
+
+            // @@ TMP Not sure what exactly the user's mistake would be here.
+            //
+            // Fail if there are any ad hoc prerequisites because perform is
+            // not usually executed.
+            //
+            if (pi == include_type::adhoc)
+              fail << "ad hoc prerequisite " << p << " of target " << g
+                   << "will not be updated";
+
+            // Ignore excluded.
+            //
+            if (!pi)
+              continue;
+
+            if (p.is_a<hxx> () || p.is_a<cxx> ())
+            {
+              // Start asynchronous matching of header and source file
+              // prerequisites and store their targets.
+              //
+              const target& t (p.search (g));
+
+              match_async (a, t, ctx.count_busy (), g[a].task_count);
+
+              pts.emplace_back (&t, pi);
+            }
+            else
+            {
+              // Collect library prerequisites but fail in case of a lib{}
+              // (see the compile rule for details).
+              //
+              if (p.is_a<libs>  ()  ||
+                  p.is_a<liba>  ()  ||
+                  p.is_a<libul> ()  ||
+                  p.is_a<libux> ())
+              {
+                lib_prereqs.emplace_back (p.as_prerequisite ());
+              }
+              else if (p.is_a<bin::lib> ())
+              {
+                fail << "unable to extract preprocessor options for "
+                     << g << " from " << p << " directly" <<
+                  info << "instead go through a \"metadata\" utility library "
+                       << "(either libul{} or libue{})" <<
+                  info << "see qt.moc module documentation for details";
+              }
+            }
           }
-          else if (pt->is_a<libs>  ()  ||
-                   pt->is_a<liba>  ()  ||
-                   pt->is_a<libul> ()  ||
-                   pt->is_a<libux> ())
+
+          wg.wait ();
+
+          // Finish matching, and then update, all the header and source file
+          // prerequisite targets that we have started.
+          //
+          for (const prerequisite_target& pt: pts)
           {
-            lib_prereqs.emplace_back (*pt);
+            const target& t (*pt.target);
+
+            match_direct_complete (a, t);
+
+            // @@ TMP Presumably the fact that update_during_match(), which
+            //        does execute_direct_sync(), is used during header
+            //        extraction means it's OK here too?
+            //
+            if (a == perform_update_id)
+              update_during_match (trace, a, t);
           }
         }
 
-        update_during_match_prerequisites (trace, a, g);
-
-        // Discover group members (moc outputs).
+        // Discover group members (moc outputs) and match them asynchronously.
         //
         // @@ TODO Scan prerequisites for Qt meta-object macros and make
         //         members only for those that match.
@@ -110,6 +148,11 @@ namespace build2
         //         prerequisites.
         //
         g.reset_members (a);
+
+        // Wait (for member match completion) with unlocked phase to allow
+        // phase switching.
+        //
+        wait_guard wg (ctx, ctx.count_busy (), g[a].task_count, true);
 
         for (const prerequisite_target& pt: pts)
         {
@@ -189,29 +232,19 @@ namespace build2
             m.prerequisites (move (ps));
           }
 
-          // Match the member.
+          // Start asynchronous matching of the member.
           //
-          // @@ TMP Matching with match_direct_sync() instead of
-          //        match_members() so that the members' dependent counts are
-          //        not incremented. Otherwise it causes problems during
-          //        clean: the members are postponed, but because the
-          //        see-through automoc{} is never executed, the members never
-          //        get executed either.
-          //
-          //        Matching using match_members() just happens to not break
-          //        because in the `exe{}: automoc{} cxx{}` setup the moc
-          //        outputs get updated during match (header extraction) which
-          //        calls execute_direct_sync which bypasses the usual
-          //        dependents count and execution order. When updating the
-          //        automoc{} directly the "unexecuted matched targets"
-          //        failure does get triggered.
-          //
-          // @@ TODO Matching 1000s of members sync is probably not good.
-          //
-          match_direct_sync (a, m);
+          match_async (a, m, ctx.count_busy (), g[a].task_count);
 
           g.members.push_back (&m);
         }
+
+        wg.wait ();
+
+        // Finish matching the member targets that we have started.
+        //
+        for (const cc* m: g.members)
+          match_direct_complete (a, *m);
 
         return [this] (action a, const target& t)
         {
@@ -239,15 +272,15 @@ namespace build2
         //    like match_direct_prerequisites() there then we wouldn't need to
         //    execute any prereqs here.
         //
-        execute_prerequisites (a, g); // @@ Not needed for update.
+        // execute_prerequisites (a, g); // @@ Not needed for update.
 
         target_state r (target_state::unchanged);
 
         // Execute members asynchronously.
         //
         // This is basically execute_members(), but based on
-        // execute_direct_async() to complement our use of match_direct_sync()
-        // above.
+        // execute_direct_async() to complement our use of
+        // match_async()/match_complete_direct() above.
         //
         size_t busy (ctx.count_busy ());
         atomic_count& tc (g[a].task_count);
