@@ -26,8 +26,10 @@ namespace build2
           // If excluded or ad hoc, then don't factor it into our tests.
           //
           if (include (a, t, p) == include_type::normal)
+          {
             if (p.is_a<cxx> () || p.is_a<hxx> ())
               return true;
+          }
         }
 
         l4 ([&]{trace << "no header or source file for target " << t;});
@@ -42,6 +44,17 @@ namespace build2
         automoc& g (xt.as<automoc> ());
         context& ctx (g.ctx);
 
+        // The overall plan is as follows:
+        //
+        // 1. Match and update sources and headers (we need to update because
+        //    we scan them), and collect all the library prerequisite (because
+        //    we need to propagate them to prerequisites of dependencies that
+        //    we synthesize).
+        //
+        // 2. Scan sources and headers for meta-object macros. Those that
+        //    contain such macros are made members of this group and for them
+        //    we synthesize a dependecy and match the moc compile rule.
+
         // Match prerequisites.
         //
         // @@ TODO If we could do something like match_direct_async() here we
@@ -49,6 +62,11 @@ namespace build2
         //         it would be delegated to the moc compile rule. As it stands
         //         we are executing all prereqs, even the ones that don't need
         //         to get compiled by moc.
+        //
+        // @@ Need to fail if see any ad hoc prerequisites (since perform
+        //    is not normally executed).
+        //
+        // @@ Do match_direct().
         //
         match_prerequisite_members (a, g);
 
@@ -65,6 +83,8 @@ namespace build2
         for (prerequisite_target& pt: pts)
         {
           using namespace bin;
+
+          // @@ Fail if see lib{}, like in compile rule.
 
           if (pt->is_a<hxx> () || pt->is_a<cxx> ())
           {
@@ -205,6 +225,9 @@ namespace build2
         const automoc& g (xt.as<automoc> ());
         context& ctx (g.ctx);
 
+        // Note that perform is not executed normally, only when the group is
+        // updated/cleaned directly.
+
         // Update prerequisites.
         //
         // Note that this is done purely to keep the dependency counts
@@ -216,7 +239,7 @@ namespace build2
         //    like match_direct_prerequisites() there then we wouldn't need to
         //    execute any prereqs here.
         //
-        execute_prerequisites (a, g);
+        execute_prerequisites (a, g); // @@ Not needed for update.
 
         target_state r (target_state::unchanged);
 

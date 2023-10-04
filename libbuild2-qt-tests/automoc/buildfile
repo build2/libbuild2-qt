@@ -7,9 +7,11 @@ if ($qt.version == 5)
 else
   import libs = libQt6Core%lib{Qt6Core}
 
-exe{driver}: hxx{source sink} cxx{driver sink}  \
-             automoc{driver}                    \
-             libue{QtCoreMeta}
+# @@ TMP: move driver when we add scanning.
+#
+src = hxx{source sink} cxx{sink}
+
+exe{driver}: $src cxx{driver} automoc{driver} libue{QtCoreMeta}
 
 # The automoc{} target scans its hxx{} and cxx{} prerequisites for Qt
 # meta-object macros and runs moc on those that match.
@@ -17,7 +19,7 @@ exe{driver}: hxx{source sink} cxx{driver sink}  \
 # Note that the corresponding moc output targets (cxx{moc_*} and moc{*}) are
 # not explicitly referred to anywhere.
 #
-automoc{driver}: hxx{source sink} cxx{sink} libue{QtCoreMeta}
+automoc{driver}: $src libue{QtCoreMeta}
 
 # Test that non-ad hoc generated source files are updated before the Qt
 # meta-object macro scan is done. (The link rule only updates headers and ad

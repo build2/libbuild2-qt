@@ -287,7 +287,7 @@ namespace build2
 
     namespace moc
     {
-      static const automoc_rule automoc_rule_;
+      static const automoc_rule automoc_rule_; // @@ Move to module
     }
 
     // The `qt.moc` module.
@@ -355,21 +355,23 @@ namespace build2
         //                       targets for those that match, and delegate
         //                       updating them to the qt.moc.compile rule.
         //
-        rs.insert_rule<cxx::cxx> (perform_update_id,   "qt.moc.compile", m);
-        rs.insert_rule<cxx::cxx> (perform_clean_id,    "qt.moc.compile", m);
-        rs.insert_rule<cxx::cxx> (configure_update_id, "qt.moc.compile", m);
+        moc::compile_rule& c (m);
+        moc::automoc_rule& a (m);
 
-        rs.insert_rule<qt::moc::moc> (perform_update_id,   "qt.moc.compile", m);
-        rs.insert_rule<qt::moc::moc> (perform_clean_id,    "qt.moc.compile", m);
-        rs.insert_rule<qt::moc::moc> (configure_update_id, "qt.moc.compile", m);
+        rs.insert_rule<cxx::cxx> (perform_update_id,   "qt.moc.compile", c);
+        rs.insert_rule<cxx::cxx> (perform_clean_id,    "qt.moc.compile", c);
+        rs.insert_rule<cxx::cxx> (configure_update_id, "qt.moc.compile", c);
+
+        rs.insert_rule<qt::moc::moc> (perform_update_id,   "qt.moc.compile", c);
+        rs.insert_rule<qt::moc::moc> (perform_clean_id,    "qt.moc.compile", c);
+        rs.insert_rule<qt::moc::moc> (configure_update_id, "qt.moc.compile", c);
 
         rs.insert_rule<qt::moc::automoc> (
-          perform_update_id,   "qt.moc.automoc", automoc_rule_);
+          perform_update_id,   "qt.moc.automoc", a);
         rs.insert_rule<qt::moc::automoc> (
-          perform_clean_id,    "qt.moc.automoc", automoc_rule_);
+          perform_clean_id,    "qt.moc.automoc", a);
         rs.insert_rule<qt::moc::automoc> (
-          configure_update_id, "qt.moc.automoc", automoc_rule_);
-
+          configure_update_id, "qt.moc.automoc", a);
       }
 
       return true;
