@@ -44,207 +44,212 @@ namespace build2
         automoc& g (xt.as<automoc> ());
         context& ctx (g.ctx);
 
-        // @@ TODO: like in demo.
-        //
-        //if (a == perform_update_id)
-        //{
-
-        // @@ TODO: fsdir{} (for depdb).
-
-        // The overall plan is as follows:
-        //
-        // 1. Match and update sources and headers (we need to update because
-        //    we scan them), and collect all the library prerequisites
-        //    (because we need to propagate them to prerequisites of
-        //    dependencies that we synthesize).
-        //
-        // 2. Scan sources and headers for meta-object macros. Those that
-        //    contain such macros are made members of this group and for them
-        //    we synthesize a dependency and match the moc compile rule.
-
-        // Match and update header and source file prerequisites and collect
-        // library prerequisites.
-        //
-        vector<prerequisite> libs;
-
-        auto& pts (g.prerequisite_targets[a]);
+        if (a == perform_update_id)
         {
-          // Wait with unlocked phase to allow phase switching.
+          // @@ TODO: fsdir{} (for depdb).
+
+          // The overall plan is as follows:
+          //
+          // 1. Match and update sources and headers (we need to update
+          //    because we scan them), and collect all the library
+          //    prerequisites (because we need to propagate them to
+          //    prerequisites of dependencies that we synthesize).
+          //
+          // 2. Scan sources and headers for meta-object macros. Those that
+          //    contain such macros are made members of this group and for
+          //    them we synthesize a dependency and match the moc compile
+          //    rule.
+
+          // Match and update header and source file prerequisites and collect
+          // library prerequisites.
+          //
+          vector<prerequisite> libs;
+
+          auto& pts (g.prerequisite_targets[a]);
+          {
+            // Wait with unlocked phase to allow phase switching.
+            //
+            wait_guard wg (ctx, ctx.count_busy (), g[a].task_count, true);
+
+            for (const prerequisite_member& p: group_prerequisite_members (a, g))
+            {
+              include_type pi (include (a, g, p));
+
+              // Ignore excluded.
+              //
+              if (!pi)
+                continue;
+
+              // Fail if there are any ad hoc prerequisites because perform is
+              // not normally executed.
+              //
+              if (pi == include_type::adhoc)
+                fail << "ad hoc prerequisite " << p << " of target " << g
+                     << " does not make sense";
+
+              if (p.is_a<hxx> () || p.is_a<cxx> ())
+              {
+                // Start asynchronous matching of header and source file
+                // prerequisites and store their targets.
+                //
+                const target& t (p.search (g));
+
+                match_async (a, t, ctx.count_busy (), g[a].task_count);
+
+                pts.emplace_back (&t, pi);
+              }
+              else
+              {
+                using namespace bin;
+
+                // Collect library prerequisites but fail in case of a lib{}
+                // (see the compile rule we are delegating to for details).
+                //
+                if (p.is_a<libs>  ()  ||
+                    p.is_a<liba>  ()  ||
+                    p.is_a<libul> ()  ||
+                    p.is_a<libux> ())
+                {
+                  lib_prereqs.emplace_back (p.as_prerequisite ());
+                }
+                else if (p.is_a<bin::lib> ())
+                {
+                  fail << "unable to extract preprocessor options for "
+                       << g << " from " << p << " directly" <<
+                    info << "instead go through a \"metadata\" utility library "
+                       << "(either libul{} or libue{})" <<
+                    info << "see qt.moc module documentation for details";
+                }
+              }
+            }
+
+            wg.wait ();
+
+            // Finish matching and then update all the header and source file
+            // prerequisite targets that we have started.
+            //
+            for (const prerequisite_target& pt: pts)
+            {
+              const target& t (*pt.target);
+
+              match_direct_complete (a, t);
+
+              // @@ TMP Presumably the fact that update_during_match(), which
+              //        does execute_direct_sync(), is used during header
+              //        extraction means it's OK here too?
+              //
+              if (a == perform_update_id)
+                update_during_match (trace, a, t);
+            }
+          }
+
+          //@@ update_during_match_prerequisites (mask=0)
+
+          // Discover group members (moc outputs) and match them asynchronously.
+          //
+          // @@ TODO Scan prerequisites for Qt meta-object macros and make
+          //         members only for those that match.
+          //
+          //         For the time being we simply make members for all
+          //         prerequisites.
+          //
+          g.reset_members (a);
+
+          // @@ Split loop.
+
+          // Wait (for member match completion) with unlocked phase to allow
+          // phase switching.
           //
           wait_guard wg (ctx, ctx.count_busy (), g[a].task_count, true);
 
-          for (const prerequisite_member& p: group_prerequisite_members (a, g))
+          for (const prerequisite_target& p: pts)
           {
-            include_type pi (include (a, g, p));
+            const target& pt (*p);
 
-            // Ignore excluded.
+            // Derive the moc output name and target type.
             //
-            if (!pi)
+            string mn;              // Member target name.
+            const target_type* mtt; // Member target type.
+
+            if (pt.is_a<hxx> ())
+            {
+              mn = "moc_" + pt.name;
+              mtt = &cxx::static_type;
+            }
+            else if (pt.is_a<cxx> ())
+            {
+              mn = pt.name;
+              mtt = &moc::static_type;
+            }
+            else // Not a header or source file?
+            {
+              assert (false);
               continue;
+            }
 
-            // Fail if there are any ad hoc prerequisites because perform is
-            // not normally executed.
+            // Prepare member's prerequisites: the header or source file and
+            // all of the library prerequisites.
             //
-            if (pi == include_type::adhoc)
-              fail << "ad hoc prerequisite " << p << " of target " << g
-                   << " does not make sense";
+            prerequisites ps {prerequisite (pt)};
+            for (const prerequisite& l: libs)
+              ps.push_back (l);
 
-            if (p.is_a<hxx> () || p.is_a<cxx> ())
+            // Search for an existing target or create a new one.
+            //
+            // Note: we want to use the prerequisite's output directory rather
+            // than group's since we want the member's location correspond to
+            // the prerequisite, not the group.
+            //
+            // @@ Add a test with source in subdirectory.
+            //
+            pair<target&, ulock> tl (
+              search_new_locked (ctx,
+                                 *mtt,
+                                 pt.out.empty () ? pt.dir : pt.out, // dir
+                                 dir_path (), // out (always in out)
+                                 move (mn),
+                                 nullptr,     // ext
+                                 nullptr));   // scope (absolute path)
+
+            const cc& m (tl.first.as<cc> ()); // Member target.
+
+            // We are ok with an existing target as long as it doesn't have any
+            // prerequisites. For example, the user could have specified a
+            // target-specific variable.
+            //
+            // Note also that we may have already done this before in case of
+            // an operation batch.
+            //
+            if (!m.prerequisites (move (ps))) // Note: cannot fail if locked.
             {
-              // Start asynchronous matching of header and source file
-              // prerequisites and store their targets.
-              //
-              const target& t (p.search (g));
-
-              match_async (a, t, ctx.count_busy (), g[a].task_count);
-
-              pts.emplace_back (&t, pi);
+              // @@ TODO: verify prerequisites match.
             }
-            else
-            {
-              using namespace bin;
 
-              // Collect library prerequisites but fail in case of a lib{}
-              // (see the compile rule we are delegating to for details).
-              //
-              if (p.is_a<libs>  ()  ||
-                  p.is_a<liba>  ()  ||
-                  p.is_a<libul> ()  ||
-                  p.is_a<libux> ())
-              {
-                lib_prereqs.emplace_back (p.as_prerequisite ());
-              }
-              else if (p.is_a<bin::lib> ())
-              {
-                fail << "unable to extract preprocessor options for "
-                     << g << " from " << p << " directly" <<
-                  info << "instead go through a \"metadata\" utility library "
-                       << "(either libul{} or libue{})" <<
-                  info << "see qt.moc module documentation for details";
-              }
-            }
+            tl.second.unlock ();
+
+            // Start asynchronous matching of the member.
+            //
+            match_async (a, m, ctx.count_busy (), g[a].task_count);
+
+            g.members.push_back (&m);
           }
 
           wg.wait ();
 
-          // Finish matching and then update all the header and source file
-          // prerequisite targets that we have started.
+          // Finish matching the member targets that we have started.
           //
-          for (const prerequisite_target& pt: pts)
-          {
-            const target& t (*pt.target);
-
-            match_direct_complete (a, t);
-
-            // @@ TMP Presumably the fact that update_during_match(), which
-            //        does execute_direct_sync(), is used during header
-            //        extraction means it's OK here too?
-            //
-            if (a == perform_update_id)
-              update_during_match (trace, a, t);
-          }
+          // Note that we have to do this in the direct mode since we don't know
+          // whether perform() will be executed or not.
+          //
+          for (const cc* m: g.members)
+            match_direct_complete (a, *m);
         }
-
-        //@@ update_during_match_prerequisites (mask=0)
-
-        // Discover group members (moc outputs) and match them asynchronously.
-        //
-        // @@ TODO Scan prerequisites for Qt meta-object macros and make
-        //         members only for those that match.
-        //
-        //         For the time being we simply make members for all
-        //         prerequisites.
-        //
-        g.reset_members (a);
-
-        // @@ Split loop.
-
-        // Wait (for member match completion) with unlocked phase to allow
-        // phase switching.
-        //
-        wait_guard wg (ctx, ctx.count_busy (), g[a].task_count, true);
-
-        for (const prerequisite_target& p: pts)
+        else if (a == perform_clean_id)
         {
-          const target& pt (*p);
-
-          // Derive the moc output name and target type.
-          //
-          string mn;              // Member target name.
-          const target_type* mtt; // Member target type.
-
-          if (pt.is_a<hxx> ())
-          {
-            mn = "moc_" + pt.name;
-            mtt = &cxx::static_type;
-          }
-          else if (pt.is_a<cxx> ())
-          {
-            mn = pt.name;
-            mtt = &moc::static_type;
-          }
-          else // Not a header or source file?
-          {
-            assert (false);
-            continue;
-          }
-
-          // Prepare member's prerequisites: the header or source file and
-          // all of the library prerequisites.
-          //
-          prerequisites ps {prerequisite (pt)};
-          for (const prerequisite& l: libs)
-            ps.push_back (l);
-
-          // Search for an existing target or create a new one.
-          //
-          // Note: we want to use the prerequisite's output directory rather
-          // than group's since we want the member's location correspond to
-          // the prerequisite, not the group.
-          //
-          // @@ Add a test with source in subdirectory.
-          //
-          pair<target&, ulock> tl (
-            search_new_locked (ctx,
-                               *mtt,
-                               pt.out.empty () ? pt.dir : pt.out, // dir
-                               dir_path (), // out (always in out)
-                               move (mn),
-                               nullptr,     // ext
-                               nullptr));   // scope (absolute path)
-
-          const cc& m (tl.first.as<cc> ()); // Member target.
-
-          // We are ok with an existing target as long as it doesn't have any
-          // prerequisites. For example, the user could have specified a
-          // target-specific variable.
-          //
-          // Note also that we may have already done this before in case of
-          // an operation batch.
-          //
-          if (!m.prerequisites (move (ps))) // Note: cannot fail if locked.
-          {
-            // @@ TODO: verify prerequisites match.
-          }
-
-          tl.second.unlock ();
-
-          // Start asynchronous matching of the member.
-          //
-          match_async (a, m, ctx.count_busy (), g[a].task_count);
-
-          g.members.push_back (&m);
         }
-
-        wg.wait ();
-
-        // Finish matching the member targets that we have started.
-        //
-        // Note that we have to do this in the direct mode since we don't know
-        // whether perform() will be executed or not.
-        //
-        for (const cc* m: g.members)
-          match_direct_complete (a, *m);
+        else // Configure/dist update.
+        {
+        }
 
         return [this] (action a, const target& t)
         {
