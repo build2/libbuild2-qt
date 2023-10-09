@@ -7,9 +7,14 @@ if ($qt.version == 5)
 else
   import libs = libQt6Core%lib{Qt6Core}
 
+# All of the project's source files.
+#
+# Put hxx{source} in ./source/ to test that subdirectories are handled
+# correctly.
+#
 # @@ TMP: move driver when we add scanning.
 #
-src = hxx{source sink} cxx{sink}
+src = hxx{source/source sink} cxx{sink}
 
 exe{driver}: $src cxx{driver} automoc{driver} libue{QtCoreMeta}
 
@@ -32,5 +37,7 @@ libue{QtCoreMeta}: $libs
 # Set the include path prefix.
 #
 qt.moc.options = -p automoc
+
+cxx{source/moc_source}: qt.moc.options = -p automoc/source
 
 cxx.poptions += "-I$out_root" "-I$src_root"

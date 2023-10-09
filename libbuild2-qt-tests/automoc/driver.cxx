@@ -1,5 +1,5 @@
 #include <automoc/sink.hxx>
-#include <automoc/source.hxx>
+#include <automoc/source/source.hxx>
 
 int
 main ()
