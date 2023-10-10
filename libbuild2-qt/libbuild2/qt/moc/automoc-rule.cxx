@@ -1,5 +1,6 @@
 #include <libbuild2/qt/moc/automoc-rule.hxx>
 
+#include <libbuild2/depdb.hxx>
 #include <libbuild2/scope.hxx>
 #include <libbuild2/target.hxx>
 #include <libbuild2/context.hxx>
@@ -61,6 +62,24 @@ namespace build2
           //    contain such macros are made members of this group and for
           //    them we synthesize a dependency and match the moc compile
           //    rule.
+
+          // The depdb starts with the rule name and version followed by the
+          // moc macro scan results of all header and source file
+          // prerequisites, one per line, formatted as follows:
+          //
+          //   <macro-flag> <path>
+          //
+          // The flag is '1' if the file contains moc macros and '0' if not.
+          // The scan results are terminated by a blank line.
+          //
+          // For example:
+          //
+          //   qt.moc.automoc 1
+          //   1 /tmp/foo/hasmoc.h
+          //   0 /tmp/foo/nomoc.h
+          //
+          //   ^@
+          //
 
           // Create the output directory (for the depdb).
           //
@@ -153,12 +172,11 @@ namespace build2
           //
           g.reset_members (a);
 
-          // @@ TODO: sort pts (skipping dir if present) using path() as key.
-
           // Iterate over pts and depdb entries in parallel comparing each
-          // pair of entries. If we encounter any kind of deviation (no match,
-          // no entry on either side, mtime, etc), then we switch depdb to
-          // writing and start scanning entries from pts.
+          // pair of entries ("lookup mode"). If we encounter any kind of
+          // deviation (no match, no entry on either side, mtime, etc), then
+          // we switch depdb to writing and start scanning entries from pts
+          // ("scan mode").
           //
           // Note that we have to store "negative" inputs (those that don't
           // contain any moc macros) in depdb since we cannot distinguish
@@ -166,12 +184,90 @@ namespace build2
           // input that we haven't scanned.
           //
 
+          // See above for a description of the depdb format.
+          //
+          depdb dd (g.dir / (g.name + ".automoc.d"));
+
+          // If the rule name and/or version does not match we will be doing
+          // an unconditional scan below.
+          //
+          if (dd.expect ("qt.moc.automoc 1") != nullptr)
+            l4 ([&]{trace << "rule mismatch forcing update of " << g;});
+
+          // Sort pts to ensure prerequisites line up with their depdb
+          // entries. Skip the output directory if present.
+          //
+          // Note that it is certain at this point that everything in pts
+          // except for dir are `path_target`s.
+          //
+          sort (pts.begin () + (dir == nullptr ? 0 : 1), pts.end (),
+                [] (const prerequisite_target& x, const prerequisite_target& y)
+                {
+                  return x->as<path_target> ().path () <
+                         y->as<path_target> ().path ();
+                });
+
           for (const prerequisite_target& p: pts)
           {
-            const target& pt (*p);
-
-            if (&pt == dir) // Skip output directory injected above.
+            if (p == dir) // Skip the output directory injected above.
               continue;
+
+            const path_target& pt (p->as<path_target> ());
+
+            // If true, this prerequisite will be scanned and the result
+            // written to the depdb.
+            //
+            bool scan (dd.writing ());
+
+            // If we're still in lookup mode, read the next line from the
+            // depdb and switch to scan mode if necessary; otherwise skip the
+            // prerequisite if its depdb macro flag is false (i.e., don't add
+            // it as a member).
+            //
+            if (!dd.writing ())
+            {
+              string* l (dd.read ());
+
+              // Get the prerequisite's mtime.
+              //
+              timestamp mt;
+              if ((mt = pt.mtime ()) == timestamp_unknown)
+                mt = mtime (pt.path ().string ().c_str ());
+
+              // Switch to scan mode if the prerequisite is newer than the
+              // depdb or there's no valid depdb entry for it; otherwise check
+              // the debdb entry.
+              //
+              if (mt > dd.mtime || l == nullptr || l->size () < 2)
+                scan = true;
+              else
+              {
+                // Switch to scan mode if the prerequisite path doesn't match
+                // the depdb path; otherwise skip the prerequisite if its
+                // depdb macro flag is false.
+                //
+                if (path (l->c_str () + 2) != pt.path ())
+                  scan = true;
+                else if (l->front () == '0')
+                  continue;
+              }
+            }
+
+            // Scan the prerequisite for moc macros if necessary and write the
+            // result to the depdb. Skip the prerequisite if no macros were
+            // found (i.e., don't add it as a member).
+            //
+            if (scan)
+            {
+              // @@ TODO: Implement scan.
+              //
+
+              dd.write ("1 ", false);
+              dd.write (pt.path ());
+
+              if (false) // No macros found.
+                continue;
+            }
 
             // Derive the moc output name and target type.
             //
@@ -236,6 +332,11 @@ namespace build2
 
             g.members.push_back (&m);
           }
+
+          // Write the blank line terminating the list of paths.
+          //
+          dd.expect ("");
+          dd.close (false /* mtime_check */);
 
           // Match members asynchronously.
           //
