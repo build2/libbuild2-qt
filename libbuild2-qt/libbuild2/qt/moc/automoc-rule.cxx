@@ -69,6 +69,9 @@ namespace build2
           // Match and update header and source file prerequisites and collect
           // library prerequisites.
           //
+          // Note that we have to do this in the direct mode since we don't
+          // know whether perform() will be executed or not.
+          //
           vector<prerequisite> libs;
 
           auto& pts (g.prerequisite_targets[a]);
@@ -98,11 +101,11 @@ namespace build2
                 // Start asynchronous matching of header and source file
                 // prerequisites and store their targets.
                 //
-                const target& t (p.search (g));
+                const target& pt (p.search (g));
 
-                match_async (a, t, ctx.count_busy (), g[a].task_count);
+                match_async (a, pt, ctx.count_busy (), g[a].task_count);
 
-                pts.emplace_back (&t, pi);
+                pts.emplace_back (&pt, pi);
               }
               else
               {
@@ -150,6 +153,19 @@ namespace build2
           //
           g.reset_members (a);
 
+          // @@ TODO: sort pts (skipping dir if present) using path() as key.
+
+          // Iterate over pts and debdb entries in parallel comparing each
+          // pair of entries. If we encounrer any kind of deviation (no match,
+          // no entry on either side, mtime, etc), then we switch debdb to
+          // writing and start scanning entries from pts.
+          //
+          // Note that we have to store "negative" inputs (those that don't
+          // contain any moc macros) in depdb since we cannot distinguish
+          // between "negative" input that we have already scanned and a new
+          // input that we haven't scanned.
+          //
+
           for (const prerequisite_target& p: pts)
           {
             const target& pt (*p);
@@ -189,7 +205,8 @@ namespace build2
             //
             // Note: we want to use the prerequisite's output directory rather
             // than the group's since we want the member's location to
-            // correspond to the prerequisite, not the group.
+            // correspond to the prerequisite, not the group (think of a
+            // source in a subdirectory).
             //
             pair<target&, ulock> tl (
               search_new_locked (ctx,
@@ -222,8 +239,8 @@ namespace build2
 
           // Match members asynchronously.
           //
-          // Note that we have to do this in the direct mode since we don't
-          // know whether perform() will be executed or not.
+          // Note that we have to also do this in the direct mode since we
+          // don't know whether perform() will be executed or not.
           //
           // Wait with unlocked phase to allow phase switching.
           //
