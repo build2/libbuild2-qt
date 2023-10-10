@@ -155,9 +155,9 @@ namespace build2
 
           // @@ TODO: sort pts (skipping dir if present) using path() as key.
 
-          // Iterate over pts and debdb entries in parallel comparing each
-          // pair of entries. If we encounrer any kind of deviation (no match,
-          // no entry on either side, mtime, etc), then we switch debdb to
+          // Iterate over pts and depdb entries in parallel comparing each
+          // pair of entries. If we encounter any kind of deviation (no match,
+          // no entry on either side, mtime, etc), then we switch depdb to
           // writing and start scanning entries from pts.
           //
           // Note that we have to store "negative" inputs (those that don't
