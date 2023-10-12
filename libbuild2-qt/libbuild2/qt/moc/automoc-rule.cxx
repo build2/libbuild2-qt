@@ -81,10 +81,6 @@ namespace build2
           //   ^@
           //
 
-          // Create the output directory (for the depdb).
-          //
-          fsdir_rule::perform_update_direct (a, g);
-
           // Match and update header and source file prerequisites and collect
           // library prerequisites.
           //
@@ -171,6 +167,10 @@ namespace build2
           //         prerequisites.
           //
           g.reset_members (a);
+
+          // Create the output directory (for the depdb).
+          //
+          fsdir_rule::perform_update_direct (a, g);
 
           // Iterate over pts and depdb entries in parallel comparing each
           // pair of entries ("lookup mode"). If we encounter any kind of
@@ -362,6 +362,61 @@ namespace build2
         }
         else // Configure/dist update.
         {
+          // @@ TMP Just do the bare minimum to get this action to work:
+          //        basically we need a non-zero number of members.
+          //
+          // Match prerequisites.
+          //
+          match_prerequisite_members (a, g);
+
+          // Discover group members.
+          //
+          if (g.group_members (a).members == nullptr)
+          {
+            g.reset_members (a);
+
+            auto& pts (g.prerequisite_targets[a]);
+
+            for (const prerequisite_target& p: pts)
+            {
+              if (p == dir) // Skip the output directory injected above.
+                continue;
+
+              const path_target& pt (p->as<path_target> ());
+              string mn;              // Member target name.
+              const target_type* mtt; // Member target type.
+
+              if (pt.is_a<hxx> ())
+              {
+                mn = "moc_" + pt.name;
+                mtt = &cxx::static_type;
+              }
+              else if (pt.is_a<cxx> ())
+              {
+                mn = pt.name;
+                mtt = &moc::static_type;
+              }
+              else // Not a header or source file?
+                continue;
+
+              pair<target&, ulock> tl (
+                search_new_locked (ctx,
+                                   *mtt,
+                                   pt.out_dir (), // dir
+                                   dir_path (),   // out (always in out)
+                                   move (mn),
+                                   nullptr,       // ext
+                                   nullptr));     // scope (absolute path)
+
+              const cc& m (tl.first.as<cc> ()); // Member target.
+
+              if (tl.second.owns_lock ())
+                tl.second.unlock ();
+
+              g.members.push_back (&m);
+            }
+          }
+
           return noop_recipe;
         }
 
