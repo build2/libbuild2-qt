@@ -60,6 +60,9 @@ namespace build2
           //
           // 2. Scan sources and headers for meta-object macros. Those that
           //    contain such macros are made members of this group and for
+          //
+          //      @@ TODO The macro-containing files are not made members.
+          //
           //    them we synthesize a dependency and match the moc compile
           //    rule.
 
@@ -121,7 +124,7 @@ namespace build2
                   fail << "unable to extract preprocessor options for "
                        << g << " from " << p << " directly" <<
                     info << "instead go through a \"metadata\" utility library "
-                       << "(either libul{} or libue{})" <<
+                         << "(either libul{} or libue{})" <<
                     info << "see qt.moc module documentation for details";
                 }
               }
@@ -228,6 +231,8 @@ namespace build2
               // skip the prerequisite if its depdb macro flag is false (i.e.,
               // don't add it as a member).
               //
+              //   @@ TODO Not adding the prereq as member!
+              //
               string* l (dd.read ());
 
               // Switch to scan mode if the depdb entry is invalid or a blank
@@ -235,7 +240,10 @@ namespace build2
               // path. Otherwise check its mtime and depdb macro flag.
               //
               if (l == nullptr || l->size () < 3 ||
-                  path (l->c_str () + 2) != ptp) // @@ path_traits::compare()
+                  path_traits::compare (l->c_str () + 2,
+                                        l->size () - 2,
+                                        ptp.string ().c_str (),
+                                        ptp.string ().size ()) != 0)
               {
                 scan = true;
               }
@@ -243,7 +251,7 @@ namespace build2
               {
                 // Get the prerequisite's mtime.
                 //
-                timestamp mt (pt.load_mtime (ptp));
+                timestamp mt (pt.load_mtime ());
 
                 // Switch to the scan mode if the prerequisite is newer than
                 // the depdb; otherwise skip the prerequisite if its depdb
@@ -264,6 +272,8 @@ namespace build2
             // Scan the prerequisite for moc macros if necessary and write the
             // result to the depdb. Skip the prerequisite if no macros were
             // found (i.e., don't add it as a member).
+            //
+            //   @@ TODO Prereqs are not added as members
             //
             if (scan)
             {
