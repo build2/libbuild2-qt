@@ -212,6 +212,7 @@ namespace build2
               continue;
 
             const path_target& pt (p->as<path_target> ());
+            const path& ptp (pt.path (memory_order_relaxed)); // See above.
 
             // True if this prerequisite needs to be scanned and the result
             // written to the depdb.
@@ -233,8 +234,8 @@ namespace build2
               // line or its path doesn't match the prerequisite's
               // path. Otherwise check its mtime and depdb macro flag.
               //
-              if (l == nullptr || l->size () < 2 ||
-                  path (l->c_str () + 2) != pt.path ())
+              if (l == nullptr || l->size () < 3 ||
+                  path (l->c_str () + 2) != ptp) // @@ path_traits::compare()
               {
                 scan = true;
               }
@@ -242,18 +243,21 @@ namespace build2
               {
                 // Get the prerequisite's mtime.
                 //
-                timestamp mt;
-                if ((mt = pt.mtime ()) == timestamp_unknown)
-                  mt = mtime (pt.path ().string ().c_str ());
+                timestamp mt (pt.load_mtime (ptp));
 
-                // Switch to scan mode if the prerequisite is newer than the
-                // depdb; otherwise skip the prerequisite if its depdb macro
-                // flag is false.
+                // Switch to the scan mode if the prerequisite is newer than
+                // the depdb; otherwise skip the prerequisite if its depdb
+                // macro flag is false.
                 //
                 if (mt > dd.mtime)
                   scan = true;
-                else if (l->front () == '0')
-                  continue;
+                else
+                {
+                  if (l->front () == '0')
+                    continue;
+                  else
+                    scan = false;
+                }
               }
             }
 
@@ -267,7 +271,7 @@ namespace build2
               //
 
               dd.write ("1 ", false);
-              dd.write (pt.path ());
+              dd.write (ptp);
 
               if (false) // No macros found.
                 continue;
@@ -364,8 +368,12 @@ namespace build2
         }
         else if (a == perform_clean_id)
         {
-          fail << "clean not supported yet";
-          return noop_recipe;
+          // The plan here is to populate the memebers besed on the
+          // information saved in depdb.
+          //
+
+          //fail << "clean not supported yet";
+          //return noop_recipe;
         }
         else // Configure/dist update.
         {
