@@ -63,24 +63,6 @@ namespace build2
           //    them we synthesize a dependency and match the moc compile
           //    rule.
 
-          // The depdb starts with the rule name and version followed by the
-          // moc macro scan results of all header and source file
-          // prerequisites, one per line, formatted as follows:
-          //
-          //   <macro-flag> <path>
-          //
-          // The flag is '1' if the file contains moc macros and '0' if not.
-          // The scan results are terminated by a blank line.
-          //
-          // For example:
-          //
-          //   qt.moc.automoc 1
-          //   1 /tmp/foo/hasmoc.h
-          //   0 /tmp/foo/nomoc.h
-          //
-          //   ^@
-          //
-
           // Match and update header and source file prerequisites and collect
           // library prerequisites.
           //
@@ -183,8 +165,22 @@ namespace build2
           // between "negative" input that we have already scanned and a new
           // input that we haven't scanned.
           //
-
-          // See above for a description of the depdb format.
+          // The depdb starts with the rule name and version followed by the
+          // moc macro scan results of all header and source file
+          // prerequisites, one per line, formatted as follows:
+          //
+          //   <macro-flag> <path>
+          //
+          // The flag is '1' if the file contains moc macros and '0' if not.
+          // The scan results are terminated by a blank line.
+          //
+          // For example:
+          //
+          //   qt.moc.automoc 1
+          //   1 /tmp/foo/hasmoc.h
+          //   0 /tmp/foo/nomoc.h
+          //
+          //   ^@
           //
           depdb dd (g.dir / (g.name + ".automoc.d"));
 
@@ -192,19 +188,22 @@ namespace build2
           // an unconditional scan below.
           //
           if (dd.expect ("qt.moc.automoc 1") != nullptr)
-            l4 ([&]{trace << "rule mismatch forcing update of " << g;});
+            l4 ([&]{trace << "rule mismatch forcing rescan of " << g;});
 
           // Sort pts to ensure prerequisites line up with their depdb
           // entries. Skip the output directory if present.
           //
           // Note that it is certain at this point that everything in pts
-          // except for dir are `path_target`s.
+          // except for dir are path_target's.
           //
           sort (pts.begin () + (dir == nullptr ? 0 : 1), pts.end (),
                 [] (const prerequisite_target& x, const prerequisite_target& y)
                 {
-                  return x->as<path_target> ().path () <
-                         y->as<path_target> ().path ();
+                  // Note: we have observed the update of all these targets so
+                  // we can use the relaxed memory order for path().
+                  //
+                  return x->as<path_target> ().path (memory_order_relaxed) <
+                         y->as<path_target> ().path (memory_order_relaxed);
                 });
 
           for (const prerequisite_target& p: pts)
@@ -214,19 +213,27 @@ namespace build2
 
             const path_target& pt (p->as<path_target> ());
 
-            // If true, this prerequisite will be scanned and the result
+            // True if this prerequisite needs to be scanned and the result
             // written to the depdb.
             //
-            bool scan (dd.writing ());
+            bool scan;
 
-            // If we're still in lookup mode, read the next line from the
-            // depdb and switch to scan mode if necessary; otherwise skip the
-            // prerequisite if its depdb macro flag is false (i.e., don't add
-            // it as a member).
-            //
-            if (!dd.writing ())
+            if (dd.writing ())
+              scan = true;
+            else
             {
+              // If we're still in the lookup mode, read the next line from
+              // the depdb and switch to scan mode if necessary; otherwise
+              // skip the prerequisite if its depdb macro flag is false (i.e.,
+              // don't add it as a member).
+              //
               string* l (dd.read ());
+
+              //@@ wrong order of checks.
+              //
+              // - managed to read the line (could be blanks?)
+              // - line matches pts entry
+              // - mtime
 
               // Get the prerequisite's mtime.
               //
@@ -269,6 +276,9 @@ namespace build2
                 continue;
             }
 
+            // This prerequisite contains moc macros so synthesize the
+            // dependency and add as member.
+            //
             // Derive the moc output name and target type.
             //
             string mn;              // Member target name.
@@ -362,6 +372,8 @@ namespace build2
         }
         else // Configure/dist update.
         {
+          // @@ TODO: the plan is to return empty group in this case.
+
           // @@ TMP Just do the bare minimum to get this action to work:
           //        basically we need a non-zero number of members.
           //
