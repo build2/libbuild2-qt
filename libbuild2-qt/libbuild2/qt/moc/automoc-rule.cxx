@@ -229,31 +229,28 @@ namespace build2
               //
               string* l (dd.read ());
 
-              //@@ wrong order of checks.
+              // Switch to scan mode if the depdb entry is invalid or a blank
+              // line or its path doesn't match the prerequisite's
+              // path. Otherwise check its mtime and depdb macro flag.
               //
-              // - managed to read the line (could be blanks?)
-              // - line matches pts entry
-              // - mtime
-
-              // Get the prerequisite's mtime.
-              //
-              timestamp mt;
-              if ((mt = pt.mtime ()) == timestamp_unknown)
-                mt = mtime (pt.path ().string ().c_str ());
-
-              // Switch to scan mode if the prerequisite is newer than the
-              // depdb or there's no valid depdb entry for it; otherwise check
-              // the debdb entry.
-              //
-              if (mt > dd.mtime || l == nullptr || l->size () < 2)
+              if (l == nullptr || l->size () < 2 ||
+                  path (l->c_str () + 2) != pt.path ())
+              {
                 scan = true;
+              }
               else
               {
-                // Switch to scan mode if the prerequisite path doesn't match
-                // the depdb path; otherwise skip the prerequisite if its
-                // depdb macro flag is false.
+                // Get the prerequisite's mtime.
                 //
-                if (path (l->c_str () + 2) != pt.path ())
+                timestamp mt;
+                if ((mt = pt.mtime ()) == timestamp_unknown)
+                  mt = mtime (pt.path ().string ().c_str ());
+
+                // Switch to scan mode if the prerequisite is newer than the
+                // depdb; otherwise skip the prerequisite if its depdb macro
+                // flag is false.
+                //
+                if (mt > dd.mtime)
                   scan = true;
                 else if (l->front () == '0')
                   continue;
@@ -372,62 +369,10 @@ namespace build2
         }
         else // Configure/dist update.
         {
-          // @@ TODO: the plan is to return empty group in this case.
-
-          // @@ TMP Just do the bare minimum to get this action to work:
-          //        basically we need a non-zero number of members.
-          //
-          // Match prerequisites.
-          //
-          match_prerequisite_members (a, g);
-
-          // Discover group members.
+          // Leave members empty if they haven't been discovered yet.
           //
           if (g.group_members (a).members == nullptr)
-          {
             g.reset_members (a);
-
-            auto& pts (g.prerequisite_targets[a]);
-
-            for (const prerequisite_target& p: pts)
-            {
-              if (p == dir) // Skip the output directory injected above.
-                continue;
-
-              const path_target& pt (p->as<path_target> ());
-              string mn;              // Member target name.
-              const target_type* mtt; // Member target type.
-
-              if (pt.is_a<hxx> ())
-              {
-                mn = "moc_" + pt.name;
-                mtt = &cxx::static_type;
-              }
-              else if (pt.is_a<cxx> ())
-              {
-                mn = pt.name;
-                mtt = &moc::static_type;
-              }
-              else // Not a header or source file?
-                continue;
-
-              pair<target&, ulock> tl (
-                search_new_locked (ctx,
-                                   *mtt,
-                                   pt.out_dir (), // dir
-                                   dir_path (),   // out (always in out)
-                                   move (mn),
-                                   nullptr,       // ext
-                                   nullptr));     // scope (absolute path)
-
-              const cc& m (tl.first.as<cc> ()); // Member target.
-
-              if (tl.second.owns_lock ())
-                tl.second.unlock ();
-
-              g.members.push_back (&m);
-            }
-          }
 
           return noop_recipe;
         }
