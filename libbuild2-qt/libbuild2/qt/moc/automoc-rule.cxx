@@ -1,7 +1,8 @@
 #include <libbuild2/qt/moc/automoc-rule.hxx>
 
-#include <libbuild2/depdb.hxx>
+#include <libbuild2/depdb.hxx> // @@ TODO remove if map_extention() is removed
 #include <libbuild2/scope.hxx>
+#include <libbuild2/dyndep.hxx>
 #include <libbuild2/target.hxx>
 #include <libbuild2/context.hxx>
 #include <libbuild2/algorithm.hxx>
@@ -45,9 +46,99 @@ namespace build2
         automoc& g (xt.as<automoc> ());
         context& ctx (g.ctx);
 
+        path dd_path (g.dir / (g.name + ".automoc.d")); // Depdb path.
+
         // Inject dependency on the output directory (for the depdb).
         //
         const target* dir (inject_fsdir (a, g));
+
+        vector<prerequisite> libs;
+
+        auto inject_member = [&ctx, &g, &libs] (const path_target& pt)
+        {
+          // Derive the moc output name and target type.
+          //
+          string mn;              // Member target name.
+          const target_type* mtt; // Member target type.
+
+          if (pt.is_a<hxx> ())
+          {
+            mn = "moc_" + pt.name;
+            mtt = &cxx::static_type;
+          }
+          else if (pt.is_a<cxx> ())
+          {
+            mn = pt.name;
+            mtt = &moc::static_type;
+          }
+          else // Not a header or source file?
+          {
+            assert (false);
+            return;
+          }
+
+          // Prepare member's prerequisites: the header or source file and
+          // all of the library prerequisites.
+          //
+          prerequisites ps {prerequisite (pt)};
+          for (const prerequisite& l: libs)
+            ps.push_back (l);
+
+          // Search for an existing target or create a new one.
+          //
+          // Note: we want to use the prerequisite's output directory rather
+          // than the group's since we want the member's location to
+          // correspond to the prerequisite, not the group (think of a
+          // source in a subdirectory).
+          //
+          pair<target&, ulock> tl (
+            search_new_locked (ctx,
+                               *mtt,
+                               pt.out_dir (),     // dir
+                               dir_path (),       // out (always in out)
+                               move (mn),
+                               nullptr,           // ext
+                               nullptr));         // scope (absolute path)
+
+          const cc& m (tl.first.as<cc> ()); // Member target.
+
+          // We are ok with an existing target as long as it doesn't have any
+          // prerequisites. For example, the user could have specified a
+          // target-specific variable.
+          //
+          // Note also that we may have already done this before in case of
+          // an operation batch.
+          //
+          if (!m.prerequisites (move (ps))) // Note: cannot fail if locked.
+          {
+            // @@ TODO: verify prerequisites match.
+          }
+
+          if (tl.second.owns_lock ())
+            tl.second.unlock ();
+
+          g.members.push_back (&m);
+        };
+
+        // Match members asynchronously.
+        //
+        // Note that we have to also do this in the direct mode since we don't
+        // know whether perform() will be executed or not.
+        //
+        auto match_members = [&ctx, a, &g] ()
+        {
+          // Wait with unlocked phase to allow phase switching.
+          //
+          wait_guard wg (ctx, ctx.count_busy (), g[a].task_count, true);
+
+          for (const cc* m: g.members)
+            match_async (a, *m, ctx.count_busy (), g[a].task_count);
+
+          wg.wait ();
+
+          for (const cc* m: g.members)
+            match_direct_complete (a, *m);
+        };
 
         if (a == perform_update_id)
         {
@@ -72,7 +163,6 @@ namespace build2
           // Note that we have to do this in the direct mode since we don't
           // know whether perform() will be executed or not.
           //
-          vector<prerequisite> libs;
 
           auto& pts (g.prerequisite_targets[a]);
           {
@@ -155,7 +245,8 @@ namespace build2
 
           // Create the output directory (for the depdb).
           //
-          fsdir_rule::perform_update_direct (a, g);
+          if (dir != nullptr)
+            fsdir_rule::perform_update_direct (a, g);
 
           // Iterate over pts and depdb entries in parallel comparing each
           // pair of entries ("lookup mode"). If we encounter any kind of
@@ -185,12 +276,12 @@ namespace build2
           //
           //   ^@
           //
-          depdb dd (g.dir / (g.name + ".automoc.d"));
+          depdb dd (dd_path);
 
           // If the rule name and/or version does not match we will be doing
           // an unconditional scan below.
           //
-          if (dd.expect ("qt.moc.automoc 1") != nullptr)
+          if (dd.expect (rule_id_) != nullptr)
             l4 ([&]{trace << "rule mismatch forcing rescan of " << g;});
 
           // Sort pts to ensure prerequisites line up with their depdb
@@ -290,68 +381,7 @@ namespace build2
             // This prerequisite contains moc macros so synthesize the
             // dependency and add as member.
             //
-            // Derive the moc output name and target type.
-            //
-            string mn;              // Member target name.
-            const target_type* mtt; // Member target type.
-
-            if (pt.is_a<hxx> ())
-            {
-              mn = "moc_" + pt.name;
-              mtt = &cxx::static_type;
-            }
-            else if (pt.is_a<cxx> ())
-            {
-              mn = pt.name;
-              mtt = &moc::static_type;
-            }
-            else // Not a header or source file?
-            {
-              assert (false);
-              continue;
-            }
-
-            // Prepare member's prerequisites: the header or source file and
-            // all of the library prerequisites.
-            //
-            prerequisites ps {prerequisite (pt)};
-            for (const prerequisite& l: libs)
-              ps.push_back (l);
-
-            // Search for an existing target or create a new one.
-            //
-            // Note: we want to use the prerequisite's output directory rather
-            // than the group's since we want the member's location to
-            // correspond to the prerequisite, not the group (think of a
-            // source in a subdirectory).
-            //
-            pair<target&, ulock> tl (
-              search_new_locked (ctx,
-                                 *mtt,
-                                 pt.out_dir (), // dir
-                                 dir_path (),   // out (always in out)
-                                 move (mn),
-                                 nullptr,       // ext
-                                 nullptr));     // scope (absolute path)
-
-            const cc& m (tl.first.as<cc> ()); // Member target.
-
-            // We are ok with an existing target as long as it doesn't have any
-            // prerequisites. For example, the user could have specified a
-            // target-specific variable.
-            //
-            // Note also that we may have already done this before in case of
-            // an operation batch.
-            //
-            if (!m.prerequisites (move (ps))) // Note: cannot fail if locked.
-            {
-              // @@ TODO: verify prerequisites match.
-            }
-
-            if (tl.second.owns_lock ())
-              tl.second.unlock ();
-
-            g.members.push_back (&m);
+            inject_member (pt);
           }
 
           // Write the blank line terminating the list of paths.
@@ -359,31 +389,129 @@ namespace build2
           dd.expect ("");
           dd.close (false /* mtime_check */);
 
-          // Match members asynchronously.
-          //
-          // Note that we have to also do this in the direct mode since we
-          // don't know whether perform() will be executed or not.
-          //
-          // Wait with unlocked phase to allow phase switching.
-          //
-          wait_guard wg (ctx, ctx.count_busy (), g[a].task_count, true);
+          match_members ();
 
-          for (const cc* m: g.members)
-            match_async (a, *m, ctx.count_busy (), g[a].task_count);
-
-          wg.wait ();
-
-          for (const cc* m: g.members)
-            match_direct_complete (a, *m);
+          return [this] (action a, const target& t)
+          {
+            return perform (a, t);
+          };
         }
         else if (a == perform_clean_id)
         {
-          // The plan here is to populate the memebers besed on the
-          // information saved in depdb.
-          //
+          // @@ TODO Clean the automoc.d as well.
 
-          //fail << "clean not supported yet";
-          //return noop_recipe;
+          // Collect the library prerequisites.
+          //
+          // Note that although the libraries are not used during clean there
+          // may be subsequent update operations in this batch. Given that
+          // prerequisites can only be set once we have to set the libraries
+          // as prerequisites now.
+          //
+          for (const prerequisite_member& p: group_prerequisite_members (a, g))
+          {
+            include_type pi (include (a, g, p));
+
+            // Ignore excluded.
+            //
+            if (!pi)
+              continue;
+
+            // Fail if there are any ad hoc prerequisites because perform is
+            // not normally executed.
+            //
+            if (pi == include_type::adhoc)
+              fail << "ad hoc prerequisite " << p << " of target " << g
+                   << " does not make sense";
+
+            // Collect library prerequisites but fail in case of a lib{}
+            // (see the compile rule we are delegating to for details).
+            //
+            if (p.is_a<bin::libs>  ()  ||
+                p.is_a<bin::liba>  ()  ||
+                p.is_a<bin::libul> ()  ||
+                p.is_a<bin::libux> ())
+            {
+              libs.emplace_back (p.as_prerequisite ());
+            }
+            else if (p.is_a<bin::lib> ())
+            {
+              fail << "unable to extract preprocessor options for "
+                   << g << " from " << p << " directly" <<
+                info << "instead go through a \"metadata\" utility library "
+                     << "(either libul{} or libue{})" <<
+                info << "see qt.moc module documentation for details";
+            }
+          }
+
+          // The plan here is to populate the members based on the information
+          // saved in depdb.
+          //
+          // @@ TMP Opening the depdb in read-only mode fails if it doesn't
+          //        already exist. Should we check that the file exists, issue
+          //        a warning, and then do nothing?
+          //
+          depdb dd (dd_path, true /* read_only */);
+
+          if (dd.expect (rule_id_) != nullptr)
+            fail << "unable to clean target " << g << " with old depdb";
+
+          g.reset_members (a);
+
+          for (;;) // Breakout loop.
+          {
+            string* l (dd.read ());
+
+            if (l == nullptr)
+              break;
+
+            if (l->empty () || l->size () < 3)
+              break; // Done.
+
+            if (l->front () == '0')
+              continue; // Skip if it doesn't contain moc macros.
+
+            path pp (l->c_str () + 2); // Prerequisite path (header/source).
+
+            // Get the target type from the extension.
+            //
+            // @@ TMP Otherwise search() returns file{} despite the paths
+            //        having extensions. A TODO at scope.cxx:770 implies the
+            //        plan is for this to eventually be done there?
+            //
+            const target_type* tt (nullptr);
+            {
+              auto tts = dyndep_rule::map_extension (g.root_scope (),
+                                                     pp.string (),
+                                                     pp.extension (),
+                                                     nullptr);
+              if (!tts.empty ())
+                tt = tts.at (0);
+            }
+
+            // Find existing or create new target from the header/source file
+            // path.
+            //
+            const target& pt (search (g, pp.string (), g.root_scope (), tt));
+
+            if (!pt.is_a<hxx> () && !pt.is_a<cxx> ())
+              fail << "unexpected prerequisite target type " << pt.type ()
+                   << " in depdb for target " << g <<
+                info << "prerequisite target: " << pt;
+
+            inject_member (pt.as<path_target> ());
+          }
+
+          // The blank line terminating the list of paths.
+          //
+          dd.expect ("");
+          dd.close (false /* mtime_check */);
+
+          match_members ();
+
+          return [this] (action a, const target& t)
+          {
+            return perform (a, t);
+          };
         }
         else // Configure/dist update.
         {
@@ -394,11 +522,6 @@ namespace build2
 
           return noop_recipe;
         }
-
-        return [this] (action a, const target& t)
-        {
-          return perform (a, t);
-        };
       }
 
       target_state automoc_rule::
@@ -410,13 +533,23 @@ namespace build2
         // Note that perform is not executed normally, only when the group is
         // updated/cleaned directly.
         //
-        // Note that all the prerequisites have been matched and updated in
-        // the direct mode which means no dependency counts to keep straight
-        // and thus no need to execute them here.
+        // Note that all the prerequisites (except for the output directory;
+        // see below) have been matched and updated in the direct mode which
+        // means no dependency counts to keep straight and thus no need to
+        // execute them here.
+
+        // The output directory, however, needs special attention because
+        // inject_fsdir() matches it normally (@@ TODO "indirectly?") which
+        // increments the dependency and target counts and thus it also needs
+        // to be executed normally.
+        //
+        // If it is present it is always first.
+        //
+        const fsdir* dir (g.prerequisite_targets[a][0]->is_a<fsdir> ());
 
         target_state r (target_state::unchanged);
 
-        // Execute members asynchronously.
+        // Execute members and output directory asynchronously.
         //
         // This is basically execute_members(), but based on
         // execute_direct_async() to complement our use of
@@ -429,10 +562,16 @@ namespace build2
 
         if (ctx.current_mode == execution_mode::first) // Straight
         {
+          if (dir != nullptr)
+            execute_async (a, *dir, busy, tc);
+
           for (const cc* m: g.members)
             execute_direct_async (a, *m, busy, tc);
 
           wg.wait ();
+
+          if (dir != nullptr)
+            execute_complete (a, *dir);
 
           for (const cc* m: g.members)
             r |= execute_complete (a, *m);
@@ -442,10 +581,16 @@ namespace build2
           for (size_t i (g.members.size ()); i != 0;)
             execute_direct_async (a, *g.members[--i], busy, tc);
 
+          if (dir != nullptr)
+            execute_async (a, *dir, busy, tc);
+
           wg.wait ();
 
           for (size_t i (g.members.size ()); i != 0;)
             r |= execute_complete (a, *g.members[--i]);
+
+          if (dir != nullptr)
+            execute_complete (a, *dir);
         }
 
         return r;
