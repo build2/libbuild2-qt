@@ -398,7 +398,31 @@ namespace build2
         }
         else if (a == perform_clean_id)
         {
-          // @@ TODO Clean the automoc.d as well.
+          // @@ It's a big fuzzy whether we should also clean the header and
+          //    source prerequisites which we've updated in update. The
+          //    representative corner case here would be a generated header
+          //    that doesn't actually contain any moc macros. But it's
+          //    unclear doing direct clean is a good idea due to execution
+          //    order.
+          //
+          //    - We could probably assume/expect that these headers/sources
+          //      are also listed as prerequisites of other targets and will
+          //      therefore be cleaned via that path.
+          //
+          //    - But there is still the case where the group is cleaned
+          //      directly. Perhaps in this case we should just do it in
+          //      perform. But we don't know whether perform will be called
+          //      or not.
+          //
+          //    Feels like we don't have much choice except do the same
+          //    as in update.
+          //
+          //      [-] We could at least try to do unmatch, if possible.
+          //
+          //      - Add a representative corner case test mentioned above.
+          //
+          //      [-] Will need clean_during_match_prerequisites().
+          //
 
           // Collect the library prerequisites.
           //
@@ -452,7 +476,7 @@ namespace build2
           //
           depdb dd (dd_path, true /* read_only */);
 
-          if (dd.expect (rule_id_) != nullptr)
+          if (dd.expect (rule_id_) != nullptr) // @@ This writes!
             fail << "unable to clean target " << g << " with old depdb";
 
           g.reset_members (a);
@@ -507,6 +531,14 @@ namespace build2
           dd.close (false /* mtime_check */);
 
           match_members ();
+
+
+          // We also need to clean the depdb file here (since perform may not
+          // get executed). Let's also factor the match-only mode here since
+          // once we remove the file, we won't be able to clean the members.
+          //
+          if (!ctx.match_only)
+            rmfile (ctx, dd_path, 2 /* verbosity */);
 
           return [this] (action a, const target& t)
           {
