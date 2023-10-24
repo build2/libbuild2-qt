@@ -6,6 +6,7 @@
 #include <libbuild2/target.hxx>
 #include <libbuild2/context.hxx>
 #include <libbuild2/algorithm.hxx>
+#include <libbuild2/filesystem.hxx>
 #include <libbuild2/diagnostics.hxx>
 
 #include <libbuild2/bin/target.hxx>
@@ -149,13 +150,10 @@ namespace build2
           //    prerequisites (because we need to propagate them to
           //    prerequisites of dependencies that we synthesize).
           //
-          // 2. Scan sources and headers for meta-object macros. Those that
-          //    contain such macros are made members of this group and for
-          //
-          //      @@ TODO The macro-containing files are not made members.
-          //
-          //    them we synthesize a dependency and match the moc compile
-          //    rule.
+          // 2. Scan sources and headers for meta-object macros ("moc
+          //    macros"). For each of those that contain such macros we
+          //    synthesize a moc output target and dependency, make the target
+          //    a member, and match the moc compile rule.
 
           // Match and update header and source file prerequisites and collect
           // library prerequisites.
@@ -320,9 +318,7 @@ namespace build2
               // If we're still in the lookup mode, read the next line from
               // the depdb and switch to scan mode if necessary; otherwise
               // skip the prerequisite if its depdb macro flag is false (i.e.,
-              // don't add it as a member).
-              //
-              //   @@ TODO Not adding the prereq as member!
+              // don't add its moc output as member).
               //
               string* l (dd.read ());
 
@@ -362,9 +358,7 @@ namespace build2
 
             // Scan the prerequisite for moc macros if necessary and write the
             // result to the depdb. Skip the prerequisite if no macros were
-            // found (i.e., don't add it as a member).
-            //
-            //   @@ TODO Prereqs are not added as members
+            // found (i.e., don't add its moc output as member).
             //
             if (scan)
             {
@@ -398,7 +392,7 @@ namespace build2
         }
         else if (a == perform_clean_id)
         {
-          // @@ It's a big fuzzy whether we should also clean the header and
+          // @@ It's a bit fuzzy whether we should also clean the header and
           //    source prerequisites which we've updated in update. The
           //    representative corner case here would be a generated header
           //    that doesn't actually contain any moc macros. But it's
@@ -424,114 +418,190 @@ namespace build2
           //      [-] Will need clean_during_match_prerequisites().
           //
 
-          // Collect the library prerequisites.
+          // Match and update header and source file prerequisites and collect
+          // library prerequisites.
           //
-          // Note that although the libraries are not used during clean there
-          // may be subsequent update operations in this batch. Given that
-          // prerequisites can only be set once we have to set the libraries
-          // as prerequisites now.
+          // Note that we have to do this in the direct mode since we don't
+          // know whether perform() will be executed or not.
           //
-          for (const prerequisite_member& p: group_prerequisite_members (a, g))
+          auto& pts (g.prerequisite_targets[a]);
           {
-            include_type pi (include (a, g, p));
-
-            // Ignore excluded.
+            // Wait with unlocked phase to allow phase switching.
             //
-            if (!pi)
-              continue;
+            wait_guard wg (ctx, ctx.count_busy (), g[a].task_count, true);
 
-            // Fail if there are any ad hoc prerequisites because perform is
-            // not normally executed.
-            //
-            if (pi == include_type::adhoc)
-              fail << "ad hoc prerequisite " << p << " of target " << g
-                   << " does not make sense";
-
-            // Collect library prerequisites but fail in case of a lib{}
-            // (see the compile rule we are delegating to for details).
-            //
-            if (p.is_a<bin::libs>  ()  ||
-                p.is_a<bin::liba>  ()  ||
-                p.is_a<bin::libul> ()  ||
-                p.is_a<bin::libux> ())
+            for (const prerequisite_member& p: group_prerequisite_members (a, g))
             {
-              libs.emplace_back (p.as_prerequisite ());
+              include_type pi (include (a, g, p));
+
+              // Ignore excluded.
+              //
+              if (!pi)
+                continue;
+
+              // Fail if there are any ad hoc prerequisites because perform is
+              // not normally executed.
+              //
+              if (pi == include_type::adhoc)
+                fail << "ad hoc prerequisite " << p << " of target " << g
+                     << " does not make sense";
+
+              if (p.is_a<hxx> () || p.is_a<cxx> ())
+              {
+                // Start asynchronous matching of header and source file
+                // prerequisites and store their targets.
+                //
+                const target& pt (p.search (g));
+
+                match_async (a, pt, ctx.count_busy (), g[a].task_count);
+
+                pts.emplace_back (&pt, pi);
+              }
+              else
+              {
+                // Collect library prerequisites but fail in case of a lib{}
+                // (see the compile rule we are delegating to for details).
+                //
+                if (p.is_a<bin::libs>  ()  ||
+                    p.is_a<bin::liba>  ()  ||
+                    p.is_a<bin::libul> ()  ||
+                    p.is_a<bin::libux> ())
+                {
+                  libs.emplace_back (p.as_prerequisite ());
+                }
+                else if (p.is_a<bin::lib> ())
+                {
+                  fail << "unable to extract preprocessor options for "
+                       << g << " from " << p << " directly" <<
+                    info << "instead go through a \"metadata\" utility library "
+                         << "(either libul{} or libue{})" <<
+                    info << "see qt.moc module documentation for details";
+                }
+              }
             }
-            else if (p.is_a<bin::lib> ())
-            {
-              fail << "unable to extract preprocessor options for "
-                   << g << " from " << p << " directly" <<
-                info << "instead go through a \"metadata\" utility library "
-                     << "(either libul{} or libue{})" <<
-                info << "see qt.moc module documentation for details";
-            }
+
+            wg.wait ();
+
+            // Finish matching all the header and source file prerequisite
+            // targets that we have started.
+            //
+            for (const prerequisite_target& pt: pts)
+              match_direct_complete (a, *pt);
           }
+
+          // Sort prerequisites so that they can be binary-searched. Skip the
+          // output directory if present.
+          //
+          // Note that it is certain at this point that everything in pts
+          // except for dir are path_target's.
+          //
+          sort (pts.begin () + (dir == nullptr ? 0 : 1), pts.end (),
+                [] (const prerequisite_target& x, const prerequisite_target& y)
+                {
+                  return x->as<path_target> ().path () <
+                         y->as<path_target> ().path ();
+                });
 
           // The plan here is to populate the members based on the information
           // saved in depdb.
           //
-          // @@ TMP Opening the depdb in read-only mode fails if it doesn't
-          //        already exist. Should we check that the file exists, issue
-          //        a warning, and then do nothing?
-          //
-          depdb dd (dd_path, true /* read_only */);
-
-          if (dd.expect (rule_id_) != nullptr) // @@ This writes!
-            fail << "unable to clean target " << g << " with old depdb";
-
           g.reset_members (a);
 
-          for (;;) // Breakout loop.
-          {
-            string* l (dd.read ());
+          depdb dd (dd_path, true /* read_only */);
 
-            if (l == nullptr)
+          while (dd.reading ()) // Breakout loop.
+          {
+            string* l;
+            auto read = [&dd, &l] () -> bool
+            {
+              return (l = dd.read ()) != nullptr;
+            };
+
+            if (!read ()) // Rule id.
               break;
 
-            if (l->empty () || l->size () < 3)
-              break; // Done.
+            if (*l != rule_id_)
+              fail << "unable to clean target " << g << " with old depdb";
 
-            if (l->front () == '0')
-              continue; // Skip if it doesn't contain moc macros.
-
-            path pp (l->c_str () + 2); // Prerequisite path (header/source).
-
-            // Get the target type from the extension.
+            // Read the header and source file prerequisite paths. We should
+            // always end with a blank line.
             //
-            // @@ TMP Otherwise search() returns file{} despite the paths
-            //        having extensions. A TODO at scope.cxx:770 implies the
-            //        plan is for this to eventually be done there?
-            //
-            const target_type* tt (nullptr);
+            for (;;)
             {
-              auto tts = dyndep_rule::map_extension (g.root_scope (),
-                                                     pp.string (),
-                                                     pp.extension (),
-                                                     nullptr);
-              if (!tts.empty ())
-                tt = tts.at (0);
+              if (!read ())
+                break;
+
+              if (l->empty () || l->size () < 3)
+                break; // Done or invalid line.
+
+              // Compare a prerequisite_target's path to a string.
+              //
+              struct cmp
+              {
+                bool
+                operator() (const prerequisite_target& pt, const char* p) const
+                {
+                  const char* ptp (pt->as<path_target> ()
+                    .path ().string ().c_str ());
+
+                  return strcmp (ptp, p) < 0;
+                }
+
+                bool
+                operator() (const char* p, const prerequisite_target& pt) const
+                {
+                  const char* ptp (pt->as<path_target> ()
+                    .path ().string ().c_str ());
+
+                  return strcmp (p, ptp) < 0;
+                }
+              };
+
+              // Search for the path in pts, skipping the output directory if
+              // present.
+              //
+              auto pr (equal_range (pts.begin () + (dir == nullptr ? 0 : 1),
+                                    pts.end (),
+                                    l->c_str () + 2, // Path from depdb.
+                                    cmp {}));
+
+              // Skip if there is no prerequisite with this path.
+              //
+              if (pr.first == pr.second)
+                continue;
+
+              prerequisite_target& pt (*pr.first);
+
+              // Inject a member for this prerequisite if it contains moc
+              // macros, otherwise blank it out to prevent it from being
+              // cleaned.
+              //
+              if (l->front () == '1')
+                inject_member (pt->as<path_target> ());
+              else
+              {
+                // Blank out prerequisite by moving its target pointer to
+                // data.
+                //
+                // pt.data = reinterpret_cast<uintptr_t> (pr.first->target);
+                // pt.target = nullptr;
+                // pt.include |= prerequisite_target::include_target;
+              }
             }
 
-            // Find existing or create new target from the header/source file
-            // path.
-            //
-            const target& pt (search (g, pp.string (), g.root_scope (), tt));
-
-            if (!pt.is_a<hxx> () && !pt.is_a<cxx> ())
-              fail << "unexpected prerequisite target type " << pt.type ()
-                   << " in depdb for target " << g <<
-                info << "prerequisite target: " << pt;
-
-            inject_member (pt.as<path_target> ());
+            break;
           }
-
-          // The blank line terminating the list of paths.
-          //
-          dd.expect ("");
-          dd.close (false /* mtime_check */);
 
           match_members ();
 
+          // Clean the header and source file prerequisites.
+          //
+          // @@ TODO
+          //
+          // @@ TODO Note that prerequisites not containing moc macros have
+          //         been blanked out.
+          //
+          // clean_during_match_prerequisites (trace, a, g, 0);
 
           // We also need to clean the depdb file here (since perform may not
           // get executed). Let's also factor the match-only mode here since
@@ -571,9 +641,8 @@ namespace build2
         // execute them here.
 
         // The output directory, however, needs special attention because
-        // inject_fsdir() matches it normally (@@ TODO "indirectly?") which
-        // increments the dependency and target counts and thus it also needs
-        // to be executed normally.
+        // inject_fsdir() matches it and thus increments the dependency and
+        // target counts and therefore it also needs to be executed normally.
         //
         // If it is present it is always first.
         //
