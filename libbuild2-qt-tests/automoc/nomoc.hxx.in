@@ -1,0 +1,7 @@
+#pragma once
+
+class NoMoc
+{
+  // Note: no meta-object macros.
+  //
+};

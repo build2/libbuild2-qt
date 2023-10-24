@@ -14,7 +14,7 @@ else
 #
 # @@ TMP: move driver when we add scanning.
 #
-src = hxx{source/source sink} cxx{sink}
+src = hxx{source/source sink nomoc} cxx{sink}
 
 exe{driver}: $src cxx{driver} automoc{driver} libue{QtCoreMeta}
 
@@ -31,6 +31,11 @@ automoc{driver}: $src libue{QtCoreMeta}
 # hoc source files during match.)
 #
 cxx{sink}: in{sink}
+
+# A generated header that does not contain any meta-object macros and
+# therefore should not be cleaned if the automoc{} target is cleaned directly.
+#
+hxx{nomoc}: in{nomoc}
 
 libue{QtCoreMeta}: $libs
 

@@ -1,4 +1,5 @@
 #include <automoc/sink.hxx>
+#include <automoc/nomoc.hxx>
 #include <automoc/source/source.hxx>
 
 int
