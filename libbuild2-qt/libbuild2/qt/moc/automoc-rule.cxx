@@ -51,7 +51,7 @@ namespace build2
 
         // Inject dependency on the output directory (for the depdb).
         //
-        const target* dir (inject_fsdir (a, g));
+        const target* dir (inject_fsdir (a, g)); // @@ Need direct version.
 
         vector<prerequisite> libs;
 
@@ -291,7 +291,7 @@ namespace build2
           sort (pts.begin () + (dir == nullptr ? 0 : 1), pts.end (),
                 [] (const prerequisite_target& x, const prerequisite_target& y)
                 {
-                  // Note: we have observed the update of all these targets so
+                  // Note: we have observed the match of all these targets so
                   // we can use the relaxed memory order for path().
                   //
                   return x->as<path_target> ().path (memory_order_relaxed) <
@@ -411,18 +411,20 @@ namespace build2
           //    Feels like we don't have much choice except do the same
           //    as in update.
           //
-          //      [-] We could at least try to do unmatch, if possible.
+          //      [-] We could at least try to do unmatch, if possible. @@ TODO
           //
           //      - Add a representative corner case test mentioned above.
           //
           //      [-] Will need clean_during_match_prerequisites().
           //
 
-          // Match and update header and source file prerequisites and collect
-          // library prerequisites.
+          // Match and clean (later) header and source file prerequisites and
+          // collect library prerequisites.
           //
           // Note that we have to do this in the direct mode since we don't
           // know whether perform() will be executed or not.
+          //
+          // @@ TODO: if this stay identical to update, merge them.
           //
           auto& pts (g.prerequisite_targets[a]);
           {
@@ -498,11 +500,13 @@ namespace build2
           sort (pts.begin () + (dir == nullptr ? 0 : 1), pts.end (),
                 [] (const prerequisite_target& x, const prerequisite_target& y)
                 {
+                  // @@ memory_order_relaxed
+
                   return x->as<path_target> ().path () <
                          y->as<path_target> ().path ();
                 });
 
-          // The plan here is to populate the members based on the information
+          // The plan here is to recreate the members based on the information
           // saved in depdb.
           //
           g.reset_members (a);
@@ -521,10 +525,11 @@ namespace build2
               break;
 
             if (*l != rule_id_)
-              fail << "unable to clean target " << g << " with old depdb";
+              fail << "unable to clean target " << g
+                   << " with old dependency database";
 
-            // Read the header and source file prerequisite paths. We should
-            // always end with a blank line.
+            // Read the line corresponding to the header and source
+            // prerequisites. We should always end with a blank line.
             //
             for (;;)
             {
@@ -538,6 +543,9 @@ namespace build2
               //
               struct cmp
               {
+                // @@ memory_order_relaxed
+                // @@ path_traits compare
+
                 bool
                 operator() (const prerequisite_target& pt, const char* p) const
                 {
@@ -578,15 +586,6 @@ namespace build2
               //
               if (l->front () == '1')
                 inject_member (pt->as<path_target> ());
-              else
-              {
-                // Blank out prerequisite by moving its target pointer to
-                // data.
-                //
-                // pt.data = reinterpret_cast<uintptr_t> (pr.first->target);
-                // pt.target = nullptr;
-                // pt.include |= prerequisite_target::include_target;
-              }
             }
 
             break;
@@ -598,9 +597,6 @@ namespace build2
           //
           // @@ TODO
           //
-          // @@ TODO Note that prerequisites not containing moc macros have
-          //         been blanked out.
-          //
           // clean_during_match_prerequisites (trace, a, g, 0);
 
           // We also need to clean the depdb file here (since perform may not
@@ -609,6 +605,13 @@ namespace build2
           //
           if (!ctx.match_only)
             rmfile (ctx, dd_path, 2 /* verbosity */);
+
+          // Remove the output directory.
+          //
+          // @@ TODO
+          //
+          //if (dir != nullptr)
+          //  fsdir_rule::perform_clean_direct (a, g);
 
           return [this] (action a, const target& t)
           {
@@ -646,7 +649,7 @@ namespace build2
         //
         // If it is present it is always first.
         //
-        const fsdir* dir (g.prerequisite_targets[a][0]->is_a<fsdir> ());
+        const fsdir* dir (g.prerequisite_targets[a][0]->is_a<fsdir> ()); // @@ drop
 
         target_state r (target_state::unchanged);
 

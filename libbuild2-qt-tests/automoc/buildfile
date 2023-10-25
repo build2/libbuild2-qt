@@ -32,8 +32,8 @@ automoc{driver}: $src libue{QtCoreMeta}
 #
 cxx{sink}: in{sink}
 
-# A generated header that does not contain any meta-object macros and
-# therefore should not be cleaned if the automoc{} target is cleaned directly.
+# A generated header that does not contain any meta-object macros and, in
+# particular, should be cleaned if the automoc{} target is cleaned directly.
 #
 hxx{nomoc}: in{nomoc}
 
