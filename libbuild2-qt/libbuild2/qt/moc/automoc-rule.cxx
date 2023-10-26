@@ -1,8 +1,7 @@
 #include <libbuild2/qt/moc/automoc-rule.hxx>
 
-#include <libbuild2/depdb.hxx> // @@ TODO remove if map_extention() is removed
+#include <libbuild2/depdb.hxx>
 #include <libbuild2/scope.hxx>
-#include <libbuild2/dyndep.hxx>
 #include <libbuild2/target.hxx>
 #include <libbuild2/context.hxx>
 #include <libbuild2/algorithm.hxx>
@@ -51,7 +50,7 @@ namespace build2
 
         // Inject dependency on the output directory (for the depdb).
         //
-        const target* dir (inject_fsdir (a, g)); // @@ Need direct version.
+        const target* dir (inject_fsdir_direct (a, g));
 
         vector<prerequisite> libs;
 
@@ -385,7 +384,7 @@ namespace build2
 
           match_members ();
 
-          return [this] (action a, const target& t)
+          return [] (action a, const target& t)
           {
             return perform (a, t);
           };
@@ -500,10 +499,8 @@ namespace build2
           sort (pts.begin () + (dir == nullptr ? 0 : 1), pts.end (),
                 [] (const prerequisite_target& x, const prerequisite_target& y)
                 {
-                  // @@ memory_order_relaxed
-
-                  return x->as<path_target> ().path () <
-                         y->as<path_target> ().path ();
+                  return x->as<path_target> ().path (memory_order_relaxed) <
+                         y->as<path_target> ().path (memory_order_relaxed);
                 });
 
           // The plan here is to recreate the members based on the information
@@ -539,39 +536,48 @@ namespace build2
               if (l->empty () || l->size () < 3)
                 break; // Done or invalid line.
 
-              // Compare a prerequisite_target's path to a string.
+              // Compare a prerequisite_target's path to a C string path from
+              // the depdb.
+              //
+              // @@ TMP Given that the source of these paths is a target with
+              //        normalized and absolute path, shouldn't string
+              //        comparison be good enough? Or are we covering the case
+              //        where the user changed the case in a file's path? Is
+              //        this not just as likely as the user changing the path
+              //        completely (rename/move)?
               //
               struct cmp
               {
-                // @@ memory_order_relaxed
-                // @@ path_traits compare
-
                 bool
-                operator() (const prerequisite_target& pt, const char* p) const
+                operator() (const prerequisite_target& pt,
+                            const pair<const char*, size_t>& ddp) const
                 {
-                  const char* ptp (pt->as<path_target> ()
-                    .path ().string ().c_str ());
+                  const string& ptp (
+                    pt->as<path_target> ().path (memory_order_relaxed).string ());
 
-                  return strcmp (ptp, p) < 0;
+                  return path_traits::compare (ptp.c_str (), ptp.size (),
+                                               ddp.first,    ddp.second) < 0;
                 }
 
                 bool
-                operator() (const char* p, const prerequisite_target& pt) const
+                operator() (const pair<const char*, size_t>& ddp,
+                            const prerequisite_target& pt) const
                 {
-                  const char* ptp (pt->as<path_target> ()
-                    .path ().string ().c_str ());
+                  const string& ptp (
+                    pt->as<path_target> ().path (memory_order_relaxed).string ());
 
-                  return strcmp (p, ptp) < 0;
+                  return path_traits::compare (ddp.first,    ddp.second,
+                                               ptp.c_str (), ptp.size ()) < 0;
                 }
               };
 
-              // Search for the path in pts, skipping the output directory if
-              // present.
+              // Search for the path (at l[2]) in pts, skipping the output
+              // directory if present.
               //
               auto pr (equal_range (pts.begin () + (dir == nullptr ? 0 : 1),
                                     pts.end (),
-                                    l->c_str () + 2, // Path from depdb.
-                                    cmp {}));
+                                    make_pair (l->c_str () + 2, l->size () - 2),
+                                    cmp ()));
 
               // Skip if there is no prerequisite with this path.
               //
@@ -581,8 +587,7 @@ namespace build2
               prerequisite_target& pt (*pr.first);
 
               // Inject a member for this prerequisite if it contains moc
-              // macros, otherwise blank it out to prevent it from being
-              // cleaned.
+              // macros.
               //
               if (l->front () == '1')
                 inject_member (pt->as<path_target> ());
@@ -595,9 +600,7 @@ namespace build2
 
           // Clean the header and source file prerequisites.
           //
-          // @@ TODO
-          //
-          // clean_during_match_prerequisites (trace, a, g, 0);
+          clean_during_match_prerequisites (trace, a, g, 0);
 
           // We also need to clean the depdb file here (since perform may not
           // get executed). Let's also factor the match-only mode here since
@@ -608,10 +611,16 @@ namespace build2
 
           // Remove the output directory.
           //
-          // @@ TODO
+          // @@ TODO Find out why the directory does not get removed when
+          //         cleaning the directory (ie, not the group).
           //
-          //if (dir != nullptr)
-          //  fsdir_rule::perform_clean_direct (a, g);
+          //         When the link rule executes its prerequisites during
+          //         clean (after this automoc rule's clean has been executed)
+          //         and it gets to this fsdir{}, it gets postponed because
+          //         its dependents count is not zero.
+          //
+          if (dir != nullptr)
+           fsdir_rule::perform_clean_direct (a, g);
 
           return [this] (action a, const target& t)
           {
@@ -638,18 +647,9 @@ namespace build2
         // Note that perform is not executed normally, only when the group is
         // updated/cleaned directly.
         //
-        // Note that all the prerequisites (except for the output directory;
-        // see below) have been matched and updated in the direct mode which
-        // means no dependency counts to keep straight and thus no need to
-        // execute them here.
-
-        // The output directory, however, needs special attention because
-        // inject_fsdir() matches it and thus increments the dependency and
-        // target counts and therefore it also needs to be executed normally.
-        //
-        // If it is present it is always first.
-        //
-        const fsdir* dir (g.prerequisite_targets[a][0]->is_a<fsdir> ()); // @@ drop
+        // Note that all the prerequisites have been matched and updated in
+        // the direct mode which means no dependency counts to keep straight
+        // and thus no need to execute them here.
 
         target_state r (target_state::unchanged);
 
@@ -666,16 +666,10 @@ namespace build2
 
         if (ctx.current_mode == execution_mode::first) // Straight
         {
-          if (dir != nullptr)
-            execute_async (a, *dir, busy, tc);
-
           for (const cc* m: g.members)
             execute_direct_async (a, *m, busy, tc);
 
           wg.wait ();
-
-          if (dir != nullptr)
-            execute_complete (a, *dir);
 
           for (const cc* m: g.members)
             r |= execute_complete (a, *m);
@@ -685,18 +679,12 @@ namespace build2
           for (size_t i (g.members.size ()); i != 0;)
             execute_direct_async (a, *g.members[--i], busy, tc);
 
-          if (dir != nullptr)
-            execute_async (a, *dir, busy, tc);
-
           wg.wait ();
 
           for (size_t i (g.members.size ()); i != 0;)
             r |= execute_complete (a, *g.members[--i]);
 
-          if (dir != nullptr)
-            execute_complete (a, *dir);
         }
-
         return r;
       }
     }
