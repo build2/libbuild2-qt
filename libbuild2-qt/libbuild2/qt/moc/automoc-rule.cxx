@@ -46,11 +46,35 @@ namespace build2
         automoc& g (xt.as<automoc> ());
         context& ctx (g.ctx);
 
+        if (a != perform_update_id &&
+            a != perform_clean_id) // Configure/dist update.
+        {
+          // Leave members empty if they haven't been discovered yet.
+          //
+          if (g.group_members (a).members == nullptr)
+            g.reset_members (a);
+
+          return noop_recipe;
+        }
+
         path dd_path (g.dir / (g.name + ".automoc.d")); // Depdb path.
+
+        auto& pts (g.prerequisite_targets[a]);
 
         // Inject dependency on the output directory (for the depdb).
         //
         const target* dir (inject_fsdir_direct (a, g));
+        if (dir != nullptr)
+        {
+          // Since we don't need to propagate fsdir{} to perform() (which may
+          // not be called; see below), pop it out of prerequisite_targets to
+          // simplify things.
+          //
+          assert (pts.back () == dir);
+          pts.pop_back ();
+
+          // @@ TODO: cleanup all the relevant (dir != nullptr) places.
+        }
 
         vector<prerequisite> libs;
 
@@ -160,8 +184,6 @@ namespace build2
           // Note that we have to do this in the direct mode since we don't
           // know whether perform() will be executed or not.
           //
-
-          auto& pts (g.prerequisite_targets[a]);
           {
             // Wait with unlocked phase to allow phase switching.
             //
@@ -243,7 +265,7 @@ namespace build2
           // Create the output directory (for the depdb).
           //
           if (dir != nullptr)
-            fsdir_rule::perform_update_direct (a, g);
+            fsdir_rule::perform_update_direct (a, *dir);
 
           // Iterate over pts and depdb entries in parallel comparing each
           // pair of entries ("lookup mode"). If we encounter any kind of
@@ -383,13 +405,8 @@ namespace build2
           dd.close (false /* mtime_check */);
 
           match_members ();
-
-          return [] (action a, const target& t)
-          {
-            return perform (a, t);
-          };
         }
-        else if (a == perform_clean_id)
+        else // perform_clean_id
         {
           // @@ It's a bit fuzzy whether we should also clean the header and
           //    source prerequisites which we've updated in update. The
@@ -425,7 +442,6 @@ namespace build2
           //
           // @@ TODO: if this stay identical to update, merge them.
           //
-          auto& pts (g.prerequisite_targets[a]);
           {
             // Wait with unlocked phase to allow phase switching.
             //
@@ -539,13 +555,6 @@ namespace build2
               // Compare a prerequisite_target's path to a C string path from
               // the depdb.
               //
-              // @@ TMP Given that the source of these paths is a target with
-              //        normalized and absolute path, shouldn't string
-              //        comparison be good enough? Or are we covering the case
-              //        where the user changed the case in a file's path? Is
-              //        this not just as likely as the user changing the path
-              //        completely (rename/move)?
-              //
               struct cmp
               {
                 bool
@@ -609,33 +618,17 @@ namespace build2
           if (!ctx.match_only)
             rmfile (ctx, dd_path, 2 /* verbosity */);
 
-          // Remove the output directory.
-          //
-          // @@ TODO Find out why the directory does not get removed when
-          //         cleaning the directory (ie, not the group).
-          //
-          //         When the link rule executes its prerequisites during
-          //         clean (after this automoc rule's clean has been executed)
-          //         and it gets to this fsdir{}, it gets postponed because
-          //         its dependents count is not zero.
+          // Remove the output directory (if we can).
           //
           if (dir != nullptr)
-           fsdir_rule::perform_clean_direct (a, g);
-
-          return [this] (action a, const target& t)
-          {
-            return perform (a, t);
-          };
+           fsdir_rule::perform_clean_direct (a, *dir);
         }
-        else // Configure/dist update.
+
+        //return &perform;
+        return [] (action a, const target& t) // @@ can just return perform.
         {
-          // Leave members empty if they haven't been discovered yet.
-          //
-          if (g.group_members (a).members == nullptr)
-            g.reset_members (a);
-
-          return noop_recipe;
-        }
+          return perform (a, t);
+        };
       }
 
       target_state automoc_rule::
