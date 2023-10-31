@@ -72,8 +72,6 @@ namespace build2
           //
           assert (pts.back () == dir);
           pts.pop_back ();
-
-          // @@ TODO: cleanup all the relevant (dir != nullptr) places.
         }
 
         vector<prerequisite> libs;
@@ -304,12 +302,12 @@ namespace build2
             l4 ([&]{trace << "rule mismatch forcing rescan of " << g;});
 
           // Sort pts to ensure prerequisites line up with their depdb
-          // entries. Skip the output directory if present.
+          // entries.
           //
-          // Note that it is certain at this point that everything in pts
-          // except for dir are path_target's.
+          // Note that it is certain at this point that everything in pts are
+          // path_target's.
           //
-          sort (pts.begin () + (dir == nullptr ? 0 : 1), pts.end (),
+          sort (pts.begin (), pts.end (),
                 [] (const prerequisite_target& x, const prerequisite_target& y)
                 {
                   // Note: we have observed the match of all these targets so
@@ -321,9 +319,6 @@ namespace build2
 
           for (const prerequisite_target& p: pts)
           {
-            if (p == dir) // Skip the output directory injected above.
-              continue;
-
             const path_target& pt (p->as<path_target> ());
             const path& ptp (pt.path (memory_order_relaxed)); // See above.
 
@@ -506,13 +501,12 @@ namespace build2
               match_direct_complete (a, *pt);
           }
 
-          // Sort prerequisites so that they can be binary-searched. Skip the
-          // output directory if present.
+          // Sort prerequisites so that they can be binary-searched.
           //
-          // Note that it is certain at this point that everything in pts
-          // except for dir are path_target's.
+          // Note that it is certain at this point that everything in pts are
+          // path_target's.
           //
-          sort (pts.begin () + (dir == nullptr ? 0 : 1), pts.end (),
+          sort (pts.begin (), pts.end (),
                 [] (const prerequisite_target& x, const prerequisite_target& y)
                 {
                   return x->as<path_target> ().path (memory_order_relaxed) <
@@ -580,11 +574,9 @@ namespace build2
                 }
               };
 
-              // Search for the path (at l[2]) in pts, skipping the output
-              // directory if present.
+              // Search for the path (at l[2]) in pts.
               //
-              auto pr (equal_range (pts.begin () + (dir == nullptr ? 0 : 1),
-                                    pts.end (),
+              auto pr (equal_range (pts.begin (), pts.end (),
                                     make_pair (l->c_str () + 2, l->size () - 2),
                                     cmp ()));
 
@@ -624,11 +616,7 @@ namespace build2
            fsdir_rule::perform_clean_direct (a, *dir);
         }
 
-        //return &perform;
-        return [] (action a, const target& t) // @@ can just return perform.
-        {
-          return perform (a, t);
-        };
+        return &perform;
       }
 
       target_state automoc_rule::
@@ -646,7 +634,7 @@ namespace build2
 
         target_state r (target_state::unchanged);
 
-        // Execute members and output directory asynchronously.
+        // Execute members asynchronously.
         //
         // This is basically execute_members(), but based on
         // execute_direct_async() to complement our use of
