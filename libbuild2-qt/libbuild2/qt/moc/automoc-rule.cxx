@@ -63,7 +63,7 @@ namespace build2
 
         // Inject dependency on the output directory (for the depdb).
         //
-        const target* dir (inject_fsdir_direct (a, g));
+        const fsdir* dir (inject_fsdir_direct (a, g));
         if (dir != nullptr)
         {
           // Since we don't need to propagate fsdir{} to perform() (which may

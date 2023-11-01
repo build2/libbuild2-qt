@@ -168,7 +168,7 @@ namespace build2
 
         // Inject dependency on the output directory.
         //
-        const target* dir (inject_fsdir (a, t));
+        const fsdir* dir (inject_fsdir (a, t));
 
         // For update inject dependency on the MOC compiler target.
         //
@@ -328,7 +328,8 @@ namespace build2
 
         // Create the output directory.
         //
-        fsdir_rule::perform_update_direct (a, t);
+        if (dir != nullptr)
+          fsdir_rule::perform_update_direct (a, *dir);
 
         match_data md (*this, s, t.prerequisite_targets[a].size ());
 

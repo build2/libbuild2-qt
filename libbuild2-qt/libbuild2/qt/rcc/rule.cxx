@@ -83,7 +83,7 @@ namespace build2
 
         // Inject dependency on the output directory.
         //
-        inject_fsdir (a, t);
+        const fsdir* dir (inject_fsdir (a, t));
 
         // For update inject dependency on the RCC compiler target.
         //
@@ -117,7 +117,8 @@ namespace build2
 
         // Create the output directory.
         //
-        fsdir_rule::perform_update_direct (a, t);
+        if (dir != nullptr)
+          fsdir_rule::perform_update_direct (a, *dir);
 
         // We use depdb to track changes to the .qrc file name, options,
         // compiler, etc.
