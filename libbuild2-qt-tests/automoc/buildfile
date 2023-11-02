@@ -12,11 +12,9 @@ else
 # Put hxx{source} in ./source/ to test that subdirectories are handled
 # correctly.
 #
-# @@ TMP: move driver when we add scanning.
-#
-src = hxx{source/source sink nomoc} cxx{sink}
+src = hxx{source/source sink nomoc} cxx{sink driver}
 
-exe{driver}: $src cxx{driver} automoc{driver} libue{QtCoreMeta}
+exe{driver}: $src automoc{driver} libue{QtCoreMeta}
 
 # The automoc{} target scans its hxx{} and cxx{} prerequisites for Qt
 # meta-object macros and runs moc on those that match.
