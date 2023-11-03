@@ -10,6 +10,8 @@
 
 #include <libbuild2/bin/target.hxx>
 
+#include <libbuild2/cc/lexer.hxx>
+
 #include <libbuild2/qt/moc/target.hxx>
 
 namespace build2
@@ -376,13 +378,10 @@ namespace build2
             // result to the depdb. Skip the prerequisite if no macros were
             // found (i.e., don't add its moc output as member).
             //
-            // False negatives will break the build so those have to be
-            // eliminated completely. False positives, on the other hand, will
-            // not break the build (unless the code is invalid anyway) so
-            // eliminate only as many of those as is reasonable and practical.
-            //
             if (scan)
             {
+              using namespace build2::cc; // lexer, token, token_type
+
               ifdstream is (ifdstream::badbit);
               try
               {
@@ -393,89 +392,26 @@ namespace build2
                 fail << "unable to open file " << ptp << ": " << e;
               }
 
-              bool macro (false);   // True if a moc macro was found.
-              bool comment (false); // True while inside a multi-line comment.
+              bool macro (false); // True if a moc macro was found.
 
-              // Read the file line by line.
-              //
-              for (string l; !macro; ) // Reuse the buffer.
+              path_name pn (ptp);
+              lexer l (is, pn, false /* preprocessed */);
+
+              for (token t (l.next ()); t.type != token_type::eos; t = l.next ())
               {
-                if (eof (getline (is, l)))
-                  break;
+                if (t.type != token_type::identifier)
+                  continue;
 
-                // Scan the line for moc macros.
-                //
-                // Each iteration consumes either 1 character or a single
-                // n-character token (moc macro or comment delimiter).
-                //
-                // n: number of characters consumed in the current iteration.
-                //
-                for (size_t i (0), n; i != l.size (); i += n)
+                static const string macros[4] {"Q_OBJECT",
+                                               "Q_GADGET",
+                                               "Q_NAMESPACE",
+                                               "Q_NAMESPACE_EXPORT"};
+
+                if (t.value == macros[0] || t.value == macros[1] ||
+                    t.value == macros[2] || t.value == macros[3])
                 {
-                  n = 1; // Consume 1 character if no token is found.
-
-                  // Return true if the remainder of the line starts with `s`
-                  // and set `n` to the number of characters matched. Can
-                  // return true only once per loop iteration (but false
-                  // multiple times).
-                  //
-                  auto next = [&l, i, &n] (const string& s)
-                  {
-                    if (l.compare (i, s.size (), s) == 0)
-                    {
-                      n = s.size ();
-                      return true;
-                    }
-
-                    return false;
-                  };
-
-                  // Deal with comments first, then moc macros.
-                  //
-                  if (comment)
-                  {
-                    if (next ("*/"))
-                      comment = false; // Exiting multi-line comment.
-                  }
-                  else if (next ("/*"))
-                    comment = true;    // Entering multi-line comment.
-                  else if (next ("//"))
-                    break;             // C++ comment: skip rest of line.
-                  else
-                  {
-                    // Look for a moc macro.
-                    //
-                    static const string macros[4] {"Q_OBJECT",
-                                                   "Q_GADGET",
-                                                   "Q_NAMESPACE",
-                                                   "Q_NAMESPACE_EXPORT"};
-
-                    if (next (macros[0]) || next (macros[1]) ||
-                        next (macros[2]) || next (macros[3]))
-                    {
-                      // We have a moc macro but it may be a substring of some
-                      // other identifier. Skip the rest of the line if there
-                      // is an identifier character before or after the macro.
-                      //
-                      size_t j;
-
-                      if ((j = i - 1) < i && !wspace (l[j]))
-                        if (alnum (l[j]) || l[j] == '_')
-                          break; // Give up on this line.
-
-                      if ((j = i + n) < l.size () && !wspace (l[j]))
-                        if (alnum (l[j]) || l[j] == '_')
-                          break; // Give up on this line.
-
-                      // Found a moc macro: stop parsing the file.
-                      //
-                      macro = true;
-                      break;
-                    }
-                    // Skip character not part of a moc macro or comment
-                    // delimiter.
-                    //
-                  }
+                  macro = true;
+                  break;
                 }
               }
 
