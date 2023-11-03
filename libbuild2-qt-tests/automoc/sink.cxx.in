@@ -2,9 +2,12 @@
 
 #include <automoc/sink.hxx>
 
+// Add things around the Q_OBJECT macro to test the automoc rule for false
+// negatives. (See sink.hxx for the conventional case and nomoc.hxx.in for the
+// false positive tests.)
+//
 class Sink::number: public QObject
-{
-  Q_OBJECT
+{ private:Q_OBJECT
 
 public:
   // Undefined reference errors during link mean QtCore's macros weren't

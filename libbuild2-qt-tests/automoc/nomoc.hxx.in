@@ -1,7 +1,40 @@
 #pragma once
 
+// This class contains no meta-object macros but do add a bunch things that
+// are close in order to test the automoc rule for false positives.
+//
+// If the automoc rule does make a mistake moc will fail because this class
+// does not derive from QObject.
+//
+
+#define FOO_Q_OBJECT
+#define Q_OBJECT_FOO
+
 class NoMoc
 {
-  // Note: no meta-object macros.
-  //
+  /* Q_OBJECT */
+
+  /*Q_OBJECT*/
+
+  // Q_OBJECT
+
+  //Q_OBJECT
+
+  /*
+   Q_OBJECT */
+
+  /*Q_OBJECT
+   */
+
+  /*
+    aaa
+
+    Q_OBJECT
+
+    aaa
+  */
+
+  FOO_Q_OBJECT
+
+  Q_OBJECT_FOO
 };
