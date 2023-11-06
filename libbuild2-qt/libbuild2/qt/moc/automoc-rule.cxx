@@ -126,24 +126,36 @@ namespace build2
 
           const cc& m (tl.first.as<cc> ()); // Member target.
 
-          // We are ok with an existing target as long as it doesn't have any
-          // prerequisites. For example, the user could have specified a
-          // target-specific variable.
+          // We are ok with an existing target if it has no prerequisites (for
+          // example, the user could have specified a target-specific
+          // variable) or compatible prerequisites (see below).
           //
-          // Note also that we may have already done this before in case of
-          // an operation batch.
+          // Note also that we may have already done this before in case of an
+          // operation batch.
           //
           if (!m.prerequisites (move (ps))) // Note: cannot fail if locked.
           {
             // For now we just verify that the first prerequisite is our
-            // header/source file. In particular, this leaves the door for the
-            // user to specify a custom dependency declarations and we are ok
-            // with that as long as it still looks like moc.
+            // header/source file. In particular, this leaves the door open
+            // for the user to specify a custom dependency declaration and we
+            // are ok with that as long as it still looks like moc.
             //
 
-            // @@ TODO: verify prerequisites match. See cc::link_rule (
-            // (obj:cxx dependency synthesis for how to compare
-            // prerequisites).
+            // Member's existing header/source file prerequisite and target.
+            //
+            const prerequisite& ep (m.prerequisites ().at (0));
+            const target& et (search (m, ep));
+
+            if (&et != &pt)
+            {
+              prerequisite p (pt); // Our header/source file as prerequisite.
+
+              fail << "invalid first prerequisite for target " << m <<
+                info << "first prerequisite " << ep << " "
+                     << "does not match " << p <<
+                info << ep << " resolves to target " << et <<
+                info << p  << " resolves to target " << pt;
+            }
           }
 
           if (tl.second.owns_lock ())

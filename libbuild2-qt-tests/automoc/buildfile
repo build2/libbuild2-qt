@@ -20,7 +20,8 @@ exe{driver}: $src automoc{driver} libue{QtCoreMeta}
 # meta-object macros and runs moc on those that match.
 #
 # Note that the corresponding moc output targets (cxx{moc_*} and moc{*}) are
-# not explicitly referred to anywhere.
+# not explicitly referred to anywhere (but may be if necessary, as long as the
+# first prerequisite is a valid input source file).
 #
 automoc{driver}: $src libue{QtCoreMeta}
 
