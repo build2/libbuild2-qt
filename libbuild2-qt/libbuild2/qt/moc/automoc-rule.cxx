@@ -407,15 +407,10 @@ namespace build2
               {
                 if (t.type == token_type::identifier)
                 {
-                  // @@ Let's get rid.
-                  //
-                  static const string macros[4] {"Q_OBJECT",
-                      "Q_GADGET",
-                      "Q_NAMESPACE",
-                      "Q_NAMESPACE_EXPORT"};
-
-                  if (t.value == macros[0] || t.value == macros[1] ||
-                      t.value == macros[2] || t.value == macros[3])
+                  if (t.value == "Q_OBJECT"    ||
+                      t.value == "Q_GADGET"    ||
+                      t.value == "Q_NAMESPACE" ||
+                      t.value == "Q_NAMESPACE_EXPORT")
                   {
                     macro = true;
                     break;

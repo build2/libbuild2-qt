@@ -9,14 +9,7 @@ class Source: public QObject
   // the false positive tests.)
   //
 
-  // @@ TMP This (minus the //) causes lexer to fail with "unterminated
-  //        comment".
-  //
-  // /* */Q_OBJECT
-
-  // @@ TODO Add the space back to the first multi-line comment.
-  //
-  /**/Q_OBJECT;/**/ //
+  /* */Q_OBJECT;/**/ //
 
 signals:
   // Undefined reference errors during link mean QtCore's macros weren't
