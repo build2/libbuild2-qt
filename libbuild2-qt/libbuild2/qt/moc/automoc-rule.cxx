@@ -378,6 +378,8 @@ namespace build2
             // result to the depdb. Skip the prerequisite if no macros were
             // found (i.e., don't add its moc output as member).
             //
+            // @@ TODO: one day, maybe we could do this in parallel?
+            //
             if (scan)
             {
               using namespace build2::cc; // lexer, token, token_type
@@ -397,21 +399,25 @@ namespace build2
               path_name pn (ptp);
               lexer l (is, pn, false /* preprocessed */);
 
-              for (token t (l.next ()); t.type != token_type::eos; t = l.next ())
+              for (token t (l.next ());
+                   t.type != token_type::eos;
+                   t = l.next ())
               {
-                if (t.type != token_type::identifier)
-                  continue;
-
-                static const string macros[4] {"Q_OBJECT",
-                                               "Q_GADGET",
-                                               "Q_NAMESPACE",
-                                               "Q_NAMESPACE_EXPORT"};
-
-                if (t.value == macros[0] || t.value == macros[1] ||
-                    t.value == macros[2] || t.value == macros[3])
+                if (t.type == token_type::identifier)
                 {
-                  macro = true;
-                  break;
+                  // @@ Let's get rid.
+                  //
+                  static const string macros[4] {"Q_OBJECT",
+                      "Q_GADGET",
+                      "Q_NAMESPACE",
+                      "Q_NAMESPACE_EXPORT"};
+
+                  if (t.value == macros[0] || t.value == macros[1] ||
+                      t.value == macros[2] || t.value == macros[3])
+                  {
+                    macro = true;
+                    break;
+                  }
                 }
               }
 
