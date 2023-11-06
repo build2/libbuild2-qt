@@ -135,7 +135,15 @@ namespace build2
           //
           if (!m.prerequisites (move (ps))) // Note: cannot fail if locked.
           {
-            // @@ TODO: verify prerequisites match.
+            // For now we just verify that the first prerequisite is our
+            // header/source file. In particular, this leaves the door for the
+            // user to specify a custom dependency declarations and we are ok
+            // with that as long as it still looks like moc.
+            //
+
+            // @@ TODO: verify prerequisites match. See cc::link_rule (
+            // (obj:cxx dependency synthesis for how to compare
+            // prerequisites).
           }
 
           if (tl.second.owns_lock ())
@@ -253,12 +261,6 @@ namespace build2
           update_during_match_prerequisites (trace, a, g, 0);
 
           // Discover group members (moc outputs).
-          //
-          // @@ TODO Scan prerequisites for Qt meta-object macros and make
-          //         members only for those that match.
-          //
-          //         For the time being we simply make members for all
-          //         prerequisites.
           //
           g.reset_members (a);
 
@@ -443,30 +445,28 @@ namespace build2
         }
         else // perform_clean_id
         {
-          // @@ It's a bit fuzzy whether we should also clean the header and
-          //    source prerequisites which we've updated in update. The
-          //    representative corner case here would be a generated header
-          //    that doesn't actually contain any moc macros. But it's
-          //    unclear doing direct clean is a good idea due to execution
-          //    order.
+          // It's a bit fuzzy whether we should also clean the header and
+          // source prerequisites which we've updated in update. The
+          // representative corner case here would be a generated header that
+          // doesn't actually contain any moc macros. But it's unclear doing
+          // direct clean is a good idea due to execution order.
           //
-          //    - We could probably assume/expect that these headers/sources
-          //      are also listed as prerequisites of other targets and will
-          //      therefore be cleaned via that path.
+          // - We could probably assume/expect that these headers/sources
+          //   are also listed as prerequisites of other targets and will
+          //   therefore be cleaned via that path.
           //
-          //    - But there is still the case where the group is cleaned
-          //      directly. Perhaps in this case we should just do it in
-          //      perform. But we don't know whether perform will be called
-          //      or not.
+          // - But there is still the case where the group is cleaned
+          //   directly. Perhaps in this case we should just do it in
+          //   perform. But we don't know whether perform will be called
+          //   or not.
           //
-          //    Feels like we don't have much choice except do the same
-          //    as in update.
+          // So feels like we don't have much choice except do the same as in
+          // update.
           //
-          //      [-] We could at least try to do unmatch, if possible. @@ TODO
-          //
-          //      - Add a representative corner case test mentioned above.
-          //
-          //      [-] Will need clean_during_match_prerequisites().
+          // @@ But we could at least try to do unmatch, if possible. But for
+          //    that to work we would ideally want to match members first
+          //    (since they could be the reason we would be able to unmatch).
+          //    Maybe later.
           //
 
           // Match and clean (later) header and source file prerequisites and
@@ -474,8 +474,6 @@ namespace build2
           //
           // Note that we have to do this in the direct mode since we don't
           // know whether perform() will be executed or not.
-          //
-          // @@ TODO: if this stay identical to update, merge them.
           //
           {
             // Wait with unlocked phase to allow phase switching.
