@@ -593,25 +593,25 @@ namespace build2
         //
         // Note that, with the exception of matched libraries which are being
         // updated here for the first time, this is done purely to keep the
-        // dependency counts straight. (All non-library prerequisites were
-        // updated in apply() and thus their states have already been factored
-        // into the update decision.)
+        // dependency counts straight.
+        //
+        // Ignore all prerequisites' states because non-library prerequisites
+        // were updated in apply() (and thus their states have already been
+        // factored into the update decision), while updated libraries won't
+        // affect the result (and unmatched libraries will be skipped).
         //
         {
-          // Note that the mtime check is only necessary for the matched
-          // library prerequisites (and unmatched libraries will be skipped).
-          //
-          // @@ We actually want to ignore any changes to libraries that
-          //    got updated (since they don't affect the result).
-          //
-          optional<target_state> ps (execute_prerequisites (a, t, md.mt));
+          optional<target_state> ps (execute_prerequisites (a, t, md.mt,
+              [] (const target&, size_t)
+              {
+                // Exclude all prerequisites from the mtime check (see above).
+                //
+                return false;
+              }));
 
           if (ps)
             return *ps; // No need to update.
 
-          // @@ TODO This will fail if a library prereq is out of date at this
-          //         point. @@ Should be fixed by above fix.
-          //
           assert (md.mt == timestamp_nonexistent);
         }
 
