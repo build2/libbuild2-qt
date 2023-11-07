@@ -1,5 +1,3 @@
-# @@ TODO Test generated headers
-
 qt.version = $config.libbuild2_qt_tests.qt
 
 using qt.moc
@@ -22,6 +20,10 @@ exe{driver}: hxx{source sink} cxx{driver source sink}
 exe{driver}: cxx{moc_source}: include = adhoc # Included (breaking convention).
 exe{driver}: cxx{sink_moc}                    # Compiled.
 exe{driver}: moc{sink}                        # Included.
+
+# Test that generated headers/source files are supported.
+#
+hxx{source}: in{source}
 
 # Utility library through which lib{Qt*Core}'s library metadata (poptions) is
 # made available to moc (see below for details).
