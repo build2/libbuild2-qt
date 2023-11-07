@@ -195,8 +195,9 @@ namespace build2
         // prerequisites are updated both here, during match, and during
         // execute.
         //
-        // @@ TODO Explain the function of static library prerequisites
-        //         somewhere.
+        // The purpose of library prerequisites is to get their library
+        // metadata (exported options such as macro definitions, header search
+        // directories, etc.) to be passed to moc.
         //
         auto& pts (t.prerequisite_targets[a]);
         {
