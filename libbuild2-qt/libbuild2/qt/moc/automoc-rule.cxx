@@ -140,21 +140,27 @@ namespace build2
             // for the user to specify a custom dependency declaration and we
             // are ok with that as long as it still looks like moc.
             //
+            const prerequisites& eps (m.prerequisites ());
 
             // Member's existing header/source file prerequisite and target.
             //
-            const prerequisite& ep (m.prerequisites ().at (0));
-            const target& et (search (m, ep));
+            const prerequisite* ep (eps.empty () ? nullptr : &eps.front ());
+            const target* et (ep != nullptr ? &search (m, *ep) : nullptr);
 
             if (&et != &pt)
             {
-              prerequisite p (pt); // Our header/source file as prerequisite.
+              diag_record dr (fail);
 
-              fail << "invalid first prerequisite for target " << m <<
-                info << "first prerequisite " << ep << " "
-                     << "does not match " << p <<
-                info << ep << " resolves to target " << et <<
-                info << p  << " resolves to target " << pt;
+              dr << "synthesized dependency for prerequisite " << ps.front ()
+                 << " would be incompatible with existing target " << m;
+
+              if (et == nullptr)
+                dr << info << "no existing header/source prerequisite";
+              else
+              {
+                dr << info << "existing header/source prerequisite "
+                   << *ep << " does not match " << ps.front ();
+              }
             }
           }
 
