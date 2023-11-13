@@ -204,8 +204,8 @@ namespace build2
         module& m (extra.module_as<module> ());
 
         if (v != m.version)
-          fail (loc) << "inconsistent qt.version value " << v << info
-                     << "previous value " << m.version;
+          fail (loc) << "inconsistent qt.version value " << v <<
+            info << "previous value " << m.version;
       }
 
       return true;

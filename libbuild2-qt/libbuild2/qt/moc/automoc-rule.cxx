@@ -147,7 +147,7 @@ namespace build2
             const prerequisite* ep (eps.empty () ? nullptr : &eps.front ());
             const target* et (ep != nullptr ? &search (m, *ep) : nullptr);
 
-            if (&et != &pt)
+            if (et != &pt)
             {
               diag_record dr (fail);
 
