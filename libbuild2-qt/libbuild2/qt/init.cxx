@@ -55,15 +55,27 @@ namespace build2
         fail (loc) << "set " << var << " before the using directive" << endf;
     }
 
+    // Information extracted from the compiler (moc, rcc, or uic).
+    //
+    // The environment is a list of environment variables that affect the
+    // compiler result; will be NULL if not exported by the compiler.
+    //
+    struct compiler_info
+    {
+      const exe&     ctgt; // Compiler target.
+      const string&  csum; // Compiler checksum.
+      const strings* cenv; // Compiler environment.
+    };
+
     // Import a Qt compiler and print the configuration report.
     //
     // Note that the compiler name is currently assumed to match the module
     // name (e.g., `moc` and `qt.moc`).
     //
-    // Return the compiler target in first and the compiler checksum in
-    // second or NULLs if not found.
+    // Return the compiler information or nullopt if the compiler was not
+    // found.
     //
-    static pair<const exe*, const string*>
+    static optional<compiler_info>
     import_exe (scope& rs,
                 const string& name, // Compiler name (`moc`/`rcc`/`uic`).
                 uint64_t qt_ver,    // Qt version (major).
@@ -118,14 +130,14 @@ namespace build2
 
       // Extract metadata.
       //
-      // @@ TODO: moc also has environment: need to incorporate this into
-      //          change tracking/hermetic.
-      //
       auto* ver (tgt != nullptr
                      ? &cast<string> (tgt->vars[exe_name + ".version"])
                      : nullptr);
       auto* sum (tgt != nullptr
                      ? &cast<string> (tgt->vars[exe_name + ".checksum"])
+                     : nullptr);
+      auto* env (tgt != nullptr
+                     ? cast_null<strings> (tgt->vars[exe_name + ".environment"])
                      : nullptr);
 
       // Print the report.
@@ -160,11 +172,15 @@ namespace build2
           rs.assign<uint64_t> ("qt." + name + ".version.minor") = v.minor ();
           rs.assign<uint64_t> ("qt." + name + ".version.patch") = v.patch ();
         }
+
+        return compiler_info {*tgt, *sum, env};
       }
       else
+      {
         rs.assign (v_tgt) = nullptr; // More direct indication.
 
-      return make_pair (tgt, sum);
+        return nullopt;
+      }
     }
 
     // The `qt.moc.guess` module.
@@ -189,15 +205,18 @@ namespace build2
       uint64_t v (check_version (bs, loc, first));
       if (first)
       {
-        auto pr (import_exe (rs, "moc", v, loc, opt));
+        optional <compiler_info> ci (import_exe (rs, "moc", v, loc, opt));
 
-        const exe* ctgt (pr.first);
-        const string* csum (pr.second);
-
-        if (ctgt == nullptr)
+        if (!ci)
           return false;
 
-        extra.set_module (new module (data {v, *ctgt, *csum, nullptr}));
+        // Hash the environment (used for change detection).
+        //
+        string cenv_csum (hash_environment (*ci->cenv));
+
+        extra.set_module (new module (data {v, ci->ctgt, ci->csum,
+                                            *ci->cenv, move (cenv_csum),
+                                            nullptr}));
       }
       else
       {
@@ -240,6 +259,8 @@ namespace build2
 
       if (first)
       {
+        module& m (extra.module_as<module> ());
+
         // Enter variables.
         //
         // All the variables we enter are qualified so go straight for the
@@ -279,6 +300,8 @@ namespace build2
         // Note that we merge it into the corresponding qt.moc.* variable.
         //
         config::append_config<strings> (rs, rs, "qt.moc.options", nullptr);
+
+        config::save_environment (rs, m.cenv);
       }
 
       return true;
@@ -393,15 +416,12 @@ namespace build2
       uint64_t v (check_version (bs, loc, first));
       if (first)
       {
-        auto pr (import_exe (rs, "rcc", v, loc, opt));
+        optional<compiler_info> ci (import_exe (rs, "rcc", v, loc, opt));
 
-        const exe* ctgt (pr.first);
-        const string* csum (pr.second);
-
-        if (ctgt == nullptr)
+        if (!ci)
           return false;
 
-        extra.set_module (new module (data {v, *ctgt, *csum}));
+        extra.set_module (new module (data {v, ci->ctgt, ci->csum}));
       }
       else
       {
@@ -536,15 +556,12 @@ namespace build2
 
       if (first)
       {
-        auto pr (import_exe (rs, "uic", v, loc, opt));
+        optional<compiler_info> ci (import_exe (rs, "uic", v, loc, opt));
 
-        const exe* ctgt (pr.first);
-        const string* csum (pr.second);
-
-        if (ctgt == nullptr)
+        if (!ci)
           return false;
 
-        extra.set_module (new module (data {v, *ctgt, *csum}));
+        extra.set_module (new module (data {v, ci->ctgt, ci->csum}));
       }
       else
       {

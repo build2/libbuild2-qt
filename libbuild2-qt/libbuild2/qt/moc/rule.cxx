@@ -404,6 +404,11 @@ namespace build2
           if (dd.expect (csum) != nullptr)
             l4 ([&]{trace << "compiler mismatch forcing update of " << t;});
 
+          // Then the compiler environment checksum.
+          //
+          if (dd.expect (cenv_csum) != nullptr)
+            l4 ([&]{trace << "environment mismatch forcing update of " << t;});
+
           // Then the options checksum.
           //
           {

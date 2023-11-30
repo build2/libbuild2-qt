@@ -22,12 +22,17 @@ namespace build2
     {
       // Cached data shared between rules and the module.
       //
+      // The environment is a list of environment variables that affect the
+      // compiler result.
+      //
       struct data
       {
-        const uint64_t    version; // qt.version
-        const exe&        ctgt;    // Moc compiler target.
-        const string&     csum;    // Moc compiler checksum.
-        const cc::module* cxx_mod; // The cxx module.
+        const uint64_t    version;   // qt.version
+        const exe&        ctgt;      // Moc compiler target.
+        const string&     csum;      // Moc compiler checksum.
+        const strings&    cenv;      // Moc compiler environment.
+        const string      cenv_csum; // Environment checksum.
+        const cc::module* cxx_mod;   // The cxx module.
       };
 
       class LIBBUILD2_QT_SYMEXPORT compile_rule: public rule,
