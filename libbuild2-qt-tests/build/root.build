@@ -30,6 +30,8 @@ elif ($cxx.id.type == 'clang' && $cxx.version.major >= 15)
 #
 exe{*}: test = true
 
+using cxx.predefs
+
 # The test target for cross-testing (running tests under Wine, etc).
 #
 test.target = $cxx.target

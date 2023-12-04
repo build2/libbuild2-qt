@@ -32,6 +32,10 @@ libue{QtCoreMeta}: $libs
 
 exe{driver}: libue{QtCoreMeta}
 
+# Header containing the compiler's predefined macros.
+#
+[rule_hint=cxx.predefs] hxx{moc_predefs}:
+
 # Generate:
 #
 # moc_source.cxx from source.hxx
@@ -48,8 +52,14 @@ exe{driver}: libue{QtCoreMeta}
 # lib{Qt*Core} directly because the moc rule would be unable to choose between
 # the shared or static version.
 #
-cxx{moc_source}:                    hxx{source} libue{QtCoreMeta}
-[rule_hint=qt.moc] cxx{sink_moc}:   hxx{sink}   libue{QtCoreMeta}
+# Add hxx{moc_predefs} as prerequisite to cause it to be parsed as a #include
+# before the source file (using moc's --include option). Note that the file
+# name must be `moc_predefs` for it to be recognized by the moc module. (Qt
+# and cmake hardcode the name as `moc_predefs.h`.) Skip moc{sink} to test the
+# alternative case.
+#
+cxx{moc_source}:                    hxx{source} libue{QtCoreMeta} hxx{moc_predefs}
+[rule_hint=qt.moc] cxx{sink_moc}:   hxx{sink}   libue{QtCoreMeta} hxx{moc_predefs}
 moc{sink}:                          cxx{sink}   libue{QtCoreMeta}
 
 # Set the include path prefix.
