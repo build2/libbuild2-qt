@@ -11,6 +11,7 @@ if ($config.libbuild2_qt_tests.qt < 5 || $config.libbuild2_qt_tests.qt > 6)
 cxx.std = latest
 
 using cxx
+using cxx.predefs
 
 hxx{*}: extension = hxx
 ixx{*}: extension = ixx
@@ -29,8 +30,6 @@ elif ($cxx.id.type == 'clang' && $cxx.version.major >= 15)
 # Every exe{} in this project is by default a test.
 #
 exe{*}: test = true
-
-using cxx.predefs
 
 # The test target for cross-testing (running tests under Wine, etc).
 #

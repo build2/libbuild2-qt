@@ -35,6 +35,9 @@ exe{driver}: libue{QtCoreMeta}
 # Header containing the compiler's predefined macros.
 #
 [rule_hint=cxx.predefs] hxx{moc_predefs}:
+{
+  cxx.coptions += -DXXX
+}
 
 # Generate:
 #
@@ -56,11 +59,16 @@ exe{driver}: libue{QtCoreMeta}
 # before the source file (using moc's --include option). Note that the file
 # name must be `moc_predefs` for it to be recognized by the moc module. (Qt
 # and cmake hardcode the name as `moc_predefs.h`.) Skip moc{sink} to test the
-# alternative case.
+# alternative case. @@
 #
-cxx{moc_source}:                    hxx{source} libue{QtCoreMeta} hxx{moc_predefs}
-[rule_hint=qt.moc] cxx{sink_moc}:   hxx{sink}   libue{QtCoreMeta} hxx{moc_predefs}
+cxx{moc_source}:                    hxx{source} libue{QtCoreMeta}
+[rule_hint=qt.moc] cxx{sink_moc}:   hxx{sink}   libue{QtCoreMeta}
 moc{sink}:                          cxx{sink}   libue{QtCoreMeta}
+
+cxx{moc_source sink_moc}: hxx{moc_predefs}: include = adhoc
+cxx{moc_source sink_moc}: qt.moc.options += --include $out_root/moc_predefs.hxx
+
+# @@ Add similar test to automoc{}.
 
 # Set the include path prefix.
 #
