@@ -165,7 +165,15 @@ namespace build2
           }
 
           if (tl.second.owns_lock ())
+          {
+            // Link up member to group. This will be the common case where we
+            // will be creating the member. See match_members below for the
+            // uncommon case where the member is declared in the buildfile.
+            //
+            tl.first.group = &g;
+
             tl.second.unlock ();
+          }
 
           g.members.push_back (&m);
         };
@@ -181,13 +189,41 @@ namespace build2
           //
           wait_guard wg (ctx, ctx.count_busy (), g[a].task_count, true);
 
-          for (const cc* m: g.members)
-            match_async (a, *m, ctx.count_busy (), g[a].task_count);
+          for (const cc* pm: g.members)
+          {
+            const cc& m (*pm);
+
+            // Link up member to group (unless already done; see inject_member
+            // above).
+            //
+            if (m.group != &g) // Note: atomic.
+            {
+              // We can only update the group under lock.
+              //
+              target_lock tl (lock (a, m));
+
+              if (!tl)
+                fail << "group " << g << " member " << m
+                     << " is already matched" <<
+                  info << "automoc{} group members cannot be used as "
+                     << "prerequisites directly, only via group";
+
+              if (m.group == nullptr)
+                tl.target->group = &g;
+              else if (m.group != &g)
+              {
+                fail << "group " << g << " member " << m
+                     << " is already member of group " << *m.group;
+              }
+            }
+
+            match_async (a, m, ctx.count_busy (), g[a].task_count);
+          }
 
           wg.wait ();
 
-          for (const cc* m: g.members)
-            match_direct_complete (a, *m);
+          for (const cc* pm: g.members)
+            match_direct_complete (a, *pm);
         };
 
         if (a == perform_update_id)
