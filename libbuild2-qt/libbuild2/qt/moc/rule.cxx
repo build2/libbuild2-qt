@@ -606,19 +606,58 @@ namespace build2
         // affect the result (and unmatched libraries will be skipped).
         //
         {
-          optional<target_state> ps (execute_prerequisites (a, t, md.mt,
-              [] (const target&, size_t)
-              {
-                // Exclude all prerequisites from the mtime check (see above).
-                //
-                return false;
-              }));
+          // This is a version of execute_prerequisites() that ignores all
+          // prerequisites' states and does not blank out ad hoc header
+          // prerequisites' targets because they're used below to prevent
+          // static prerequisites from being written to the depdb. (The
+          // compiler predefs header is a typical example of a static ad hoc
+          // header prerequisite.)
+          //
+          auto& pts (t.prerequisite_targets[a]);
 
-          if (ps)
-            return *ps; // No need to update.
+          size_t busy (ctx.count_busy ());
+          wait_guard wg (ctx, busy, t[a].task_count);
 
-          assert (md.mt == timestamp_nonexistent);
+          for (size_t i (0); i != pts.size (); ++i)
+          {
+            prerequisite_target& p (pts[i]);
+
+            if (p == nullptr) // Skipped.
+              continue;
+
+            if (execute_async (a, *p, busy, t[a].task_count) ==
+                target_state::postponed)
+            {
+              // Blank out all postponed prerequisites except ad hoc headers.
+              //
+              // @@ TMP Will keeping postponed ad hoc headers not mess clean
+              //        up a bit?
+              //
+              if (!p.adhoc () || (!p->is_a<h> () && !p->is_a<hxx> ()))
+                p.target = nullptr;
+            }
+          }
+
+          wg.wait ();
+
+          for (size_t i (0); i != pts.size (); ++i)
+          {
+            prerequisite_target& p (pts[i]);
+
+            if (p == nullptr)
+              continue;
+
+            execute_complete (a, *p);
+
+            // Blank out all ad hoc prerequisites except headers.
+            //
+            if (p.adhoc () && !p->is_a<h> () && !p->is_a<hxx> ())
+              p.target = nullptr;
+          }
         }
+
+        if (md.mt != timestamp_nonexistent)
+          return target_state::unchanged; // No need to update.
 
         // Prepare the moc command line.
         //
