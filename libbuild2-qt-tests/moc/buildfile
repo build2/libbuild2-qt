@@ -36,7 +36,10 @@ exe{driver}: libue{QtCoreMeta}
 #
 [rule_hint=cxx.predefs] hxx{moc_predefs}:
 {
-  cxx.coptions += -DXXX
+  # Cause this macro to be defined in the predefs header. Used to trigger
+  # build errors unless a valid predefs header is being passed to moc.
+  #
+  cxx.coptions += -DMOC_TEST_PREDEFS_INCLUDED
 }
 
 # Set the include path prefix.
@@ -62,16 +65,14 @@ qt.moc.options = --p=xxx --p yyy -pzzz -p moc
 # lib{Qt*Core} directly because the moc rule would be unable to choose between
 # the shared or static version.
 #
-# Add hxx{moc_predefs} as prerequisite to cause it to be parsed as a #include
-# before the source file (using moc's --include option). Note that the file
-# name must be `moc_predefs` for it to be recognized by the moc module. (Qt
-# and cmake hardcode the name as `moc_predefs.h`.) Skip moc{sink} to test the
-# alternative case. @@
-#
 cxx{moc_source}:                    hxx{source} libue{QtCoreMeta}
 [rule_hint=qt.moc] cxx{sink_moc}:   hxx{sink}   libue{QtCoreMeta}
 moc{sink}:                          cxx{sink}   libue{QtCoreMeta}
 
+# Arrange for hxx{moc_predefs} to be parsed as a #include before the source
+# file (using moc's --include option). Skip moc{sink} to test the alternative
+# case.
+#
 cxx{moc_source sink_moc}: hxx{moc_predefs}: include = adhoc
 cxx{moc_source sink_moc}: qt.moc.options += --include $out_base/moc_predefs.hxx
 
