@@ -65,7 +65,10 @@ namespace build2
         auto find_prereq = [a, &t] (const target_type& tt, const char* n)
           -> optional<prerequisite_member>
         {
-          for (prerequisite_member p: group_prerequisite_members (a, t))
+          // See comment in apply() for the reason why we don't use
+          // group_prerequisite_members().
+          //
+          for (prerequisite_member p: prerequisite_members (a, t))
           {
             // If excluded or ad hoc, then don't factor it into our tests.
             //
@@ -208,7 +211,11 @@ namespace build2
           //
           wait_guard wg (ctx, ctx.count_busy (), t[a].task_count, true);
 
-          for (prerequisite_member p: group_prerequisite_members (a, t))
+          // Note that we don't use group_prerequisite_members() because it
+          // would return the other members of the automoc{} group (also moc
+          // outputs) as prerequisites which would not be the right semantics.
+          //
+          for (prerequisite_member p: prerequisite_members (a, t))
           {
             const target* pt (nullptr);
             include_type  pi (include (a, t, p));
