@@ -76,9 +76,12 @@ namespace build2
           pts.pop_back ();
         }
 
-        vector<prerequisite> libs;
+        // Prerequisites to be propagated to the moc rule: libraries and ad
+        // hoc headers.
+        //
+        vector<prerequisite> moc_ps;
 
-        auto inject_member = [&ctx, &g, &libs] (const path_target& pt)
+        auto inject_member = [&ctx, &g, &moc_ps] (const path_target& pt)
         {
           // Derive the moc output name and target type.
           //
@@ -101,12 +104,12 @@ namespace build2
             return;
           }
 
-          // Prepare member's prerequisites: the header or source file and
-          // all of the library prerequisites.
+          // Prepare member's prerequisites: the input header or source file
+          // and all of the ad hoc headers and library prerequisites.
           //
           prerequisites ps {prerequisite (pt)};
-          for (const prerequisite& l: libs)
-            ps.push_back (l);
+          for (const prerequisite& p: moc_ps)
+            ps.push_back (p);
 
           // Search for an existing target or create a new one.
           //
@@ -230,18 +233,18 @@ namespace build2
         {
           // The overall plan is as follows:
           //
-          // 1. Match and update sources and headers (we need to update
-          //    because we scan them), and collect all the library
-          //    prerequisites (because we need to propagate them to
+          // 1. Match and update the input sources and headers (we need to
+          //    update because we scan them), and collect ad hoc header and
+          //    library prerequisites (because we need to propagate them to
           //    prerequisites of dependencies that we synthesize).
           //
-          // 2. Scan sources and headers for meta-object macros ("moc
-          //    macros"). For each of those that contain such macros we
+          // 2. Scan the input sources and headers for meta-object macros
+          //    ("moc macros"). For each of those that contain such macros we
           //    synthesize a moc output target and dependency, make the target
           //    a member, and match the moc compile rule.
 
-          // Match and update header and source file prerequisites and collect
-          // library prerequisites.
+          // Match and update the input header and source file prerequisites
+          // and collect ad hoc headers and library prerequisites.
           //
           // Note that we have to do this in the direct mode since we don't
           // know whether perform() will be executed or not.
@@ -260,16 +263,21 @@ namespace build2
               if (!pi)
                 continue;
 
-              // Fail if there are any ad hoc prerequisites because perform is
-              // not normally executed.
+              // Collect ad hoc headers or fail if there are any other types
+              // of ad hoc prerequisites because perform is not normally
+              // executed.
               //
               if (pi == include_type::adhoc)
-                fail << "ad hoc prerequisite " << p << " of target " << g
-                     << " does not make sense";
-
-              if (p.is_a<hxx> () || p.is_a<cxx> ())
               {
-                // Start asynchronous matching of header and source file
+                if (p.is_a<h> () || p.is_a<hxx> ())
+                  moc_ps.push_back (p.as_prerequisite ());
+                else
+                  fail << "ad hoc prerequisite " << p << " of target " << g
+                       << " does not make sense";
+              }
+              else if (p.is_a<hxx> () || p.is_a<cxx> ())
+              {
+                // Start asynchronous matching of input header and source file
                 // prerequisites and store their targets.
                 //
                 const target& pt (p.search (g));
@@ -288,7 +296,7 @@ namespace build2
                     p.is_a<bin::libul> ()  ||
                     p.is_a<bin::libux> ())
                 {
-                  libs.emplace_back (p.as_prerequisite ());
+                  moc_ps.emplace_back (p.as_prerequisite ());
                 }
                 else if (p.is_a<bin::lib> ())
                 {
@@ -303,14 +311,14 @@ namespace build2
 
             wg.wait ();
 
-            // Finish matching all the header and source file prerequisite
-            // targets that we have started.
+            // Finish matching all the input header and source file
+            // prerequisite targets that we have started.
             //
             for (const prerequisite_target& pt: pts)
               match_direct_complete (a, *pt);
           }
 
-          // Update the header and source file prerequisites.
+          // Update the input header and source file prerequisites.
           //
           update_during_match_prerequisites (trace, a, g, 0);
 
@@ -335,7 +343,7 @@ namespace build2
           // input that we haven't scanned.
           //
           // The depdb starts with the rule name and version followed by the
-          // moc macro scan results of all header and source file
+          // moc macro scan results of all input header and source file
           // prerequisites, one per line, formatted as follows:
           //
           //   <macro-flag> <path>
@@ -494,8 +502,8 @@ namespace build2
         }
         else // perform_clean_id
         {
-          // It's a bit fuzzy whether we should also clean the header and
-          // source prerequisites which we've updated in update. The
+          // It's a bit fuzzy whether we should also clean the input header
+          // and source prerequisites which we've updated in update. The
           // representative corner case here would be a generated header that
           // doesn't actually contain any moc macros. But it's unclear doing
           // direct clean is a good idea due to execution order.
@@ -518,8 +526,10 @@ namespace build2
           //    Maybe later.
           //
 
-          // Match and clean (later) header and source file prerequisites and
-          // collect library prerequisites.
+          // Match and clean (later) input header and source file
+          // prerequisites and collect ad hoc headers and library
+          // prerequisites (because we need to propagate them to prerequisites
+          // of dependencies that we synthesize).
           //
           // Note that we have to do this in the direct mode since we don't
           // know whether perform() will be executed or not.
@@ -538,16 +548,21 @@ namespace build2
               if (!pi)
                 continue;
 
-              // Fail if there are any ad hoc prerequisites because perform is
-              // not normally executed.
+              // Collect ad hoc headers or fail if there are any other types
+              // of ad hoc prerequisites because perform is not normally
+              // executed.
               //
               if (pi == include_type::adhoc)
-                fail << "ad hoc prerequisite " << p << " of target " << g
-                     << " does not make sense";
-
-              if (p.is_a<hxx> () || p.is_a<cxx> ())
               {
-                // Start asynchronous matching of header and source file
+                if (p.is_a<h> () || p.is_a<hxx> ())
+                  moc_ps.push_back (p.as_prerequisite ());
+                else
+                  fail << "ad hoc prerequisite " << p << " of target " << g
+                       << " does not make sense";
+              }
+              else if (p.is_a<hxx> () || p.is_a<cxx> ())
+              {
+                // Start asynchronous matching of input header and source file
                 // prerequisites and store their targets.
                 //
                 const target& pt (p.search (g));
@@ -566,7 +581,7 @@ namespace build2
                     p.is_a<bin::libul> ()  ||
                     p.is_a<bin::libux> ())
                 {
-                  libs.emplace_back (p.as_prerequisite ());
+                  moc_ps.emplace_back (p.as_prerequisite ());
                 }
                 else if (p.is_a<bin::lib> ())
                 {
@@ -581,8 +596,8 @@ namespace build2
 
             wg.wait ();
 
-            // Finish matching all the header and source file prerequisite
-            // targets that we have started.
+            // Finish matching all the input header and source file
+            // prerequisite targets that we have started.
             //
             for (const prerequisite_target& pt: pts)
               match_direct_complete (a, *pt);
@@ -686,7 +701,7 @@ namespace build2
 
           match_members ();
 
-          // Clean the header and source file prerequisites.
+          // Clean the input header and source file prerequisites.
           //
           clean_during_match_prerequisites (trace, a, g, 0);
 

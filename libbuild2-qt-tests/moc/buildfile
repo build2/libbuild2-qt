@@ -76,6 +76,4 @@ moc{sink}:                          cxx{sink}   libue{QtCoreMeta}
 cxx{moc_source sink_moc}: hxx{moc_predefs}: include = adhoc
 cxx{moc_source sink_moc}: qt.moc.options += --include $out_base/moc_predefs.hxx
 
-# @@ Add similar test to automoc{}.
-
 cxx.poptions += "-I$out_root" "-I$src_root"

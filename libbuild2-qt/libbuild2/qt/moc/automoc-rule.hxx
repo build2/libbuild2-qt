@@ -5,6 +5,7 @@
 
 #include <libbuild2/rule.hxx>
 
+#include <libbuild2/c/target.hxx>
 #include <libbuild2/cxx/target.hxx>
 
 #include <libbuild2/qt/export.hxx>
@@ -38,6 +39,7 @@ namespace build2
         const char* rule_id_;
 
         using cc  = build2::cc::cc;
+        using h   = build2::c::h;
         using cxx = build2::cxx::cxx;
         using hxx = build2::cxx::hxx;
       };

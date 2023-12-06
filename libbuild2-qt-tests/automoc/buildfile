@@ -27,6 +27,16 @@ exe{driver}: $src automoc{driver} libue{QtCoreMeta}
 #
 automoc{driver}: $src libue{QtCoreMeta}
 
+# Header containing the compiler's predefined macros.
+#
+[rule_hint=cxx.predefs] hxx{moc_predefs}:
+{
+  # Cause this macro to be defined in the predefs header. Used to trigger
+  # build errors unless a valid predefs header is being passed to moc.
+  #
+  cxx.coptions += -DAUTOMOC_TEST_PREDEFS_INCLUDED
+}
+
 # Test that non-ad hoc generated source files are updated before the Qt
 # meta-object macro scan is done. (The link rule only updates headers and ad
 # hoc source files during match.)
@@ -44,9 +54,19 @@ libue{QtCoreMeta}: $libs
 #
 qt.moc.options = -p automoc
 
-# Note that, in addition to testing the prefix option, this tests the
-# buildfile-declared group member (moc output) case.
+# Arrange for hxx{moc_predefs} to be parsed as a #include before the source
+# file (using moc's --include option) for all members of the automoc group.
 #
-cxx{source/moc_source}: qt.moc.options = -p automoc/source
+automoc{driver}: hxx{moc_predefs}: include = adhoc
+automoc{driver}: qt.moc.options += --include $out_base/moc_predefs.hxx
+
+# Set a target-specific include path prefix (merging with the group's
+# options).
+#
+# Note that this also tests the buildfile-declared group member case (as
+# opposed to being synthesized by the automoc rule).
+#
+cxx{source/moc_source}: qt.moc.options += $(automoc{driver}: qt.moc.options) \
+                                          -p automoc/source
 
 cxx.poptions += "-I$out_root" "-I$src_root"

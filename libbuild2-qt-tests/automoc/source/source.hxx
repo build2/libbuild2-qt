@@ -2,7 +2,14 @@
 
 #include <QtCore/QObject>
 
-class Source: public QObject
+// The moc error "Class contains Q_OBJECT macro but does not inherit from
+// QObject" means the predefs header was not successfully generated or is not
+// being passed to moc.
+//
+class Source
+#if (defined AUTOMOC_TEST_PREDEFS_INCLUDED || !defined (Q_MOC_RUN))
+: public QObject
+#endif
 {
   // Add things around the Q_OBJECT macro to test the automoc rule for false
   // negatives. (See sink.hxx for the conventional case and nomoc.hxx.in for
