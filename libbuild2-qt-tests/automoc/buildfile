@@ -44,6 +44,9 @@ libue{QtCoreMeta}: $libs
 #
 qt.moc.options = -p automoc
 
+# Note that, in addition to testing the prefix option, this tests the
+# buildfile-declared group member (moc output) case.
+#
 cxx{source/moc_source}: qt.moc.options = -p automoc/source
 
 cxx.poptions += "-I$out_root" "-I$src_root"

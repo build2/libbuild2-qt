@@ -206,7 +206,7 @@ namespace build2
                 fail << "group " << g << " member " << m
                      << " is already matched" <<
                   info << "automoc{} group members cannot be used as "
-                     << "prerequisites directly, only via group";
+                       << "prerequisites directly, only via group";
 
               if (m.group == nullptr)
                 tl.target->group = &g;

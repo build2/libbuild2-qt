@@ -39,6 +39,13 @@ exe{driver}: libue{QtCoreMeta}
   cxx.coptions += -DXXX
 }
 
+# Set the include path prefix.
+#
+# Also test handling of multiple earlier instances using different forms with
+# invalid prefixes.
+#
+qt.moc.options = --p=xxx --p yyy -pzzz -p moc
+
 # Generate:
 #
 # moc_source.cxx from source.hxx
@@ -66,15 +73,8 @@ cxx{moc_source}:                    hxx{source} libue{QtCoreMeta}
 moc{sink}:                          cxx{sink}   libue{QtCoreMeta}
 
 cxx{moc_source sink_moc}: hxx{moc_predefs}: include = adhoc
-cxx{moc_source sink_moc}: qt.moc.options += --include $out_root/moc_predefs.hxx
+cxx{moc_source sink_moc}: qt.moc.options += --include $out_base/moc_predefs.hxx
 
 # @@ Add similar test to automoc{}.
-
-# Set the include path prefix.
-#
-# Also test handling of multiple earlier instances using different forms with
-# invalid prefixes.
-#
-qt.moc.options = --p=xxx --p yyy -pzzz -p moc
 
 cxx.poptions += "-I$out_root" "-I$src_root"

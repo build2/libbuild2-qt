@@ -41,8 +41,6 @@ namespace build2
 
         strings lib_opts; // Prerequisite library options.
 
-        const path* predefs_path = nullptr; // Predefs header path.
-
         const compile_rule& rule;
 
         target_state
@@ -336,9 +334,8 @@ namespace build2
 
         match_data md (*this, s, t.prerequisite_targets[a].size ());
 
-        // Get prerequisite library options for change tracking and the path
-        // to the predefs header prerequisite (if present), saving them in
-        // match_data for reuse in perform_update().
+        // Get prerequisite library options for change tracking, saving them
+        // in match_data for reuse in perform_update().
         //
         for (size_t i (0); i != md.pts_n; ++i)
         {
@@ -389,36 +386,7 @@ namespace build2
                 true /* common */,
                 true /* original */);
             }
-            // Save the path to the predefs header if present.
-            //
-            // @@ TMP `moc_predefs.h` is hardcoded everywhere (Qt, cmake) so
-            //        it seems reasonable to "reserve" this name in the user's
-            //        project.
-            //
-            //        Otherwise, might it make sense to `moc --include` all
-            //        header prerequisites that are not the input file?
-            //
-            else if ((pt->is_a<h> () || pt->is_a<hxx> ()) &&
-                     pt->name == "moc_predefs")
-            {
-              md.predefs_path = &pt->as<file> ().path ();
-            }
           }
-        }
-
-        // If no static predefs header prerequisite was present, synthesize
-        // one now and save its path (unless asked not to).
-        //
-        // @@ TODO What if some targets have static predefs prereqs and others
-        //         do not? (If qt.moc.auto_predefs were true, some would get
-        //         user-declared predefs and others the synthesized predefs.)
-        //
-        if (md.predefs_path == nullptr && pass_moc_opts (t, "predefs"))
-        {
-          // @@ TODO Synthesize, inject predefs header target and save its
-          //         path.
-          //
-          // md.predefs_path = ...
         }
 
         // We use depdb to track changes to the input file name, options,
@@ -659,20 +627,12 @@ namespace build2
 
         // The correct order of options is as follows:
         //
-        // 1. predefs (via --include)
+        // 1. predefs (via --include) @@ TODO qt.moc.auto_predefs
         // 2. qt.moc.options
         // 3. project poptions (cc.poptions, cxx.poptions)
         // 4. library poptions (*.export.poptions)
         // 5. sys_hdr_dirs
         //
-
-        // Append the predefs header options.
-        //
-        if (md.predefs_path != nullptr)
-        {
-          args.push_back ("--include");
-          args.push_back (md.predefs_path->string ().c_str ());
-        }
 
         append_options (args, t, "qt.moc.options");
 
