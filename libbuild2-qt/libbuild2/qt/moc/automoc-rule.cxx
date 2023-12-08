@@ -76,10 +76,10 @@ namespace build2
           pts.pop_back ();
         }
 
-        // Prerequisites to be propagated to the moc rule: libraries and ad
-        // hoc headers.
+        // Extra rrerequisites to be propagated to the moc rule: libraries and
+        // ad hoc headers.
         //
-        vector<prerequisite> moc_ps;
+        vector<prerequisite> extras;
 
         auto inject_member = [&ctx, &g, &moc_ps] (const path_target& pt)
         {

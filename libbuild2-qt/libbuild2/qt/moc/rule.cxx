@@ -620,6 +620,8 @@ namespace build2
           // compiler predefs header is a typical example of a static ad hoc
           // header prerequisite.)
           //
+          // @@ Can't we move them to date and use include_target?
+          //
           auto& pts (t.prerequisite_targets[a]);
 
           size_t busy (ctx.count_busy ());
