@@ -12,7 +12,6 @@
 #include <libbuild2/bin/target.hxx>
 #include <libbuild2/bin/utility.hxx>
 
-#include <libbuild2/qt/moc/target.hxx>
 
 namespace build2
 {
@@ -244,7 +243,7 @@ namespace build2
                 fail << "unable to extract preprocessor options for "
                      << t << " from " << p << " directly" <<
                   info << "instead go through a \"metadata\" utility library "
-                     << "(either libul{} or libue{})" <<
+                       << "(either libul{} or libue{})" <<
                   info << "see qt.moc module documentation for details";
               }
 
@@ -339,7 +338,7 @@ namespace build2
         if (dir != nullptr)
           fsdir_rule::perform_update_direct (a, *dir);
 
-        match_data md (*this, s, t.prerequisite_targets[a].size ());
+        match_data md (*this, s, pts.size ());
 
         // Get prerequisite library options for change tracking, saving them
         // in match_data for reuse in perform_update().
@@ -614,13 +613,14 @@ namespace build2
         //
         {
           // This is a version of execute_prerequisites() that ignores all
-          // prerequisites' states and does not blank out ad hoc header
-          // prerequisites' targets because they're used below to prevent
-          // static prerequisites from being written to the depdb. (The
-          // compiler predefs header is a typical example of a static ad hoc
-          // header prerequisite.)
+          // prerequisites' states and preserves the targets of blanked-out
+          // prerequisites by moving the target to data instead of just
+          // nulling it out.
           //
-          // @@ Can't we move them to date and use include_target?
+          // We need to preserve the targets of blanked-out prerequisites
+          // because they are used to prevent static prerequisites from being
+          // written to the depdb (the prototypical example being the compiler
+          // predefs header declared as a static ad hoc prerequisite).
           //
           auto& pts (t.prerequisite_targets[a]);
 
@@ -634,16 +634,14 @@ namespace build2
             if (p == nullptr) // Skipped.
               continue;
 
+            // Blank out but preserve the targets of postponed prerequisites.
+            //
             if (execute_async (a, *p, busy, t[a].task_count) ==
                 target_state::postponed)
             {
-              // Blank out all postponed prerequisites except ad hoc headers.
-              //
-              // @@ TMP Will keeping postponed ad hoc headers not mess clean
-              //        up a bit?
-              //
-              if (!p.adhoc () || (!p->is_a<h> () && !p->is_a<hxx> ()))
-                p.target = nullptr;
+              p.data = reinterpret_cast<uintptr_t> (p.target);
+              p.target = nullptr;
+              p.include |= prerequisite_target::include_target;
             }
           }
 
@@ -658,10 +656,14 @@ namespace build2
 
             execute_complete (a, *p);
 
-            // Blank out all ad hoc prerequisites except headers.
+            // Blank out but preserve the targets of ad hoc prerequisites.
             //
-            if (p.adhoc () && !p->is_a<h> () && !p->is_a<hxx> ())
+            if (p.adhoc ())
+            {
+              p.data = reinterpret_cast<uintptr_t> (p.target);
               p.target = nullptr;
+              p.include |= prerequisite_target::include_target;
+            }
           }
         }
 
@@ -934,8 +936,20 @@ namespace build2
                 auto& pts (t.prerequisite_targets[a]);
 
                 for (size_t i (0); i != pts_n; ++i)
-                  if (pts[i].target == ft)
+                {
+                  const prerequisite_target& p (pts[i]);
+
+                  // Find the target in data if p was blanked out by our
+                  // custom execute_prerequisites() above.
+                  //
+                  const target* pt (
+                      (p.include & prerequisite_target::include_target) == 0
+                      ? p.target
+                      : reinterpret_cast<target*> (p.data));
+
+                  if (pt == ft)
                     return;
+                }
               }
 
               // Skip those header paths that already exist in the depdb.

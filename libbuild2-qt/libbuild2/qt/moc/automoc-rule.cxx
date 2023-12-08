@@ -76,12 +76,12 @@ namespace build2
           pts.pop_back ();
         }
 
-        // Extra rrerequisites to be propagated to the moc rule: libraries and
+        // Extra prerequisites to be propagated to the moc rule: libraries and
         // ad hoc headers.
         //
         vector<prerequisite> extras;
 
-        auto inject_member = [&ctx, &g, &moc_ps] (const path_target& pt)
+        auto inject_member = [&ctx, &g, &extras] (const path_target& pt)
         {
           // Derive the moc output name and target type.
           //
@@ -108,7 +108,7 @@ namespace build2
           // and all of the ad hoc headers and library prerequisites.
           //
           prerequisites ps {prerequisite (pt)};
-          for (const prerequisite& p: moc_ps)
+          for (const prerequisite& p: extras)
             ps.push_back (p);
 
           // Search for an existing target or create a new one.
@@ -270,7 +270,7 @@ namespace build2
               if (pi == include_type::adhoc)
               {
                 if (p.is_a<h> () || p.is_a<hxx> ())
-                  moc_ps.push_back (p.as_prerequisite ());
+                  extras.push_back (p.as_prerequisite ());
                 else
                   fail << "ad hoc prerequisite " << p << " of target " << g
                        << " does not make sense";
@@ -296,7 +296,7 @@ namespace build2
                     p.is_a<bin::libul> ()  ||
                     p.is_a<bin::libux> ())
                 {
-                  moc_ps.emplace_back (p.as_prerequisite ());
+                  extras.emplace_back (p.as_prerequisite ());
                 }
                 else if (p.is_a<bin::lib> ())
                 {
@@ -555,7 +555,7 @@ namespace build2
               if (pi == include_type::adhoc)
               {
                 if (p.is_a<h> () || p.is_a<hxx> ())
-                  moc_ps.push_back (p.as_prerequisite ());
+                  extras.push_back (p.as_prerequisite ());
                 else
                   fail << "ad hoc prerequisite " << p << " of target " << g
                        << " does not make sense";
@@ -581,7 +581,7 @@ namespace build2
                     p.is_a<bin::libul> ()  ||
                     p.is_a<bin::libux> ())
                 {
-                  moc_ps.emplace_back (p.as_prerequisite ());
+                  extras.emplace_back (p.as_prerequisite ());
                 }
                 else if (p.is_a<bin::lib> ())
                 {
