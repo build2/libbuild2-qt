@@ -4,14 +4,7 @@
 
 #include <memory> // unique_ptr
 
-// The moc error "Class contains Q_OBJECT macro but does not inherit from
-// QObject" means the predefs header was not successfully generated or is not
-// being passed to moc.
-//
-class Sink
-#if (defined MOC_TEST_PREDEFS_INCLUDED || !defined (Q_MOC_RUN))
-: public QObject
-#endif
+class Sink: public QObject
 {
   Q_OBJECT
 

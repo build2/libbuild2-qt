@@ -58,7 +58,12 @@ qt.moc.options = -p automoc
 # file (using moc's --include option) for all members of the automoc group.
 #
 automoc{driver}: hxx{moc_predefs}: include = adhoc
-automoc{driver}: qt.moc.options += --include $out_base/moc_predefs.hxx
+automoc{driver}:
+{
+  qt.moc.auto_predefs = false
+
+  qt.moc.options += --include $out_base/moc_predefs.hxx
+}
 
 # Set a target-specific include path prefix (merging with the group's
 # options).

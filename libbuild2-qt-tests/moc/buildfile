@@ -69,11 +69,23 @@ cxx{moc_source}:                    hxx{source} libue{QtCoreMeta}
 [rule_hint=qt.moc] cxx{sink_moc}:   hxx{sink}   libue{QtCoreMeta}
 moc{sink}:                          cxx{sink}   libue{QtCoreMeta}
 
-# Arrange for hxx{moc_predefs} to be parsed as a #include before the source
-# file (using moc's --include option). Skip moc{sink} to test the alternative
-# case.
+# Pass the compiler predefs header to hxx{moc_source} and hxx{sink_moc} in the
+# two different supported ways. Skip moc{sink} to test the no-predefs case.
 #
-cxx{moc_source sink_moc}: hxx{moc_predefs}: include = adhoc
-cxx{moc_source sink_moc}: qt.moc.options += --include $out_base/moc_predefs.hxx
+
+# Disable the automatic predefs header for everything by default.
+#
+qt.moc.auto_predefs = false
+
+# Arrange for hxx{moc_predefs} to be parsed as a #include before the source
+# file (using moc's --include option) using the "manual" method.
+#
+cxx{moc_source}: hxx{moc_predefs}: include = adhoc
+cxx{moc_source}: qt.moc.options += --include $out_base/moc_predefs.hxx
+
+# For cxx{sink_moc}, have the module automatically generate a compiler predefs
+# header (a different one than hxx{moc_predefs} above) and pass it to moc.
+#
+cxx{sink_moc}: qt.moc.auto_predefs = true
 
 cxx.poptions += "-I$out_root" "-I$src_root"
