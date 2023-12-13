@@ -346,6 +346,20 @@ namespace build2
 
         if (m.cxx_mod == nullptr)
           fail (loc) << "cxx module must be loaded before qt.moc module";
+      }
+
+      // Load the cxx.predefs module if automatic predefs are enabled.
+      //
+      // @@ TMP This decision has to be made every time the module is loaded
+      //        because it's possible that none of the preceding scopes had
+      //        automatic predefs enabled.
+      //
+      if (pass_moc_opts (bs, "predefs"))
+        load_module (rs, bs, "cxx.predefs", loc);
+
+      if (first)
+      {
+        module& m (extra.module_as<module> ());
 
         // Register target types and rules.
         //
