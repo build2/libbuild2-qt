@@ -128,6 +128,27 @@ namespace build2
         return false;
       }
 
+      // Blank out a prerequisite_target's target but preserve it by moving it
+      // to data.
+      //
+      static void
+      blank_target (prerequisite_target& p)
+      {
+        p.data = reinterpret_cast<uintptr_t> (p.target);
+        p.target = nullptr;
+        p.include |= prerequisite_target::include_target;
+      }
+
+      // Return a potentially blanked-out prerequisite_target's target.
+      //
+      static const target*
+      get_target (const prerequisite_target& p)
+      {
+        return (p.include & prerequisite_target::include_target) == 0
+                   ? p.target
+                   : reinterpret_cast<const target*> (p.data);
+      }
+
       // @@ TODO Handle plugin metadata json files specified via
       //         Q_PLUGIN_METADATA macros. (This is the only other file type
       //         supported besides headers and source files.)
@@ -285,13 +306,11 @@ namespace build2
               {
                 pt.include |= include_unmatch;
 
-                // Move the target pointer to data to prevent the prerequisite
+                // Blank out the target pointer to prevent the prerequisite
                 // from being updated while keeping its target around so that
                 // its options can be extracted later.
                 //
-                pt.data = reinterpret_cast<uintptr_t> (pt.target);
-                pt.target = nullptr;
-                pt.include |= prerequisite_target::include_target;
+                blank_target (pt);
               }
             }
             else
@@ -339,10 +358,7 @@ namespace build2
           // The prerequisite's target. Unmatched library targets were moved
           // to the data member during match.
           //
-          if (const target* pt =
-              (p.include & prerequisite_target::include_target) == 0
-              ? p.target
-              : reinterpret_cast<target*> (p.data))
+          if (const target* pt = get_target (p))
           {
             using namespace bin;
 
@@ -625,9 +641,7 @@ namespace build2
             if (execute_async (a, *p, busy, t[a].task_count) ==
                 target_state::postponed)
             {
-              p.data = reinterpret_cast<uintptr_t> (p.target);
-              p.target = nullptr;
-              p.include |= prerequisite_target::include_target;
+              blank_target (p);
             }
           }
 
@@ -645,11 +659,7 @@ namespace build2
             // Blank out but preserve the targets of ad hoc prerequisites.
             //
             if (p.adhoc ())
-            {
-              p.data = reinterpret_cast<uintptr_t> (p.target);
-              p.target = nullptr;
-              p.include |= prerequisite_target::include_target;
-            }
+              blank_target (p);
           }
         }
 
@@ -928,12 +938,7 @@ namespace build2
                   // Find the target in data if p was blanked out by our
                   // custom execute_prerequisites() above.
                   //
-                  const target* pt (
-                      (p.include & prerequisite_target::include_target) == 0
-                      ? p.target
-                      : reinterpret_cast<target*> (p.data));
-
-                  if (pt == ft)
+                  if (get_target (p) == ft)
                     return;
                 }
               }
