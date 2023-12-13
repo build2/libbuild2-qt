@@ -173,6 +173,7 @@ namespace build2
         const path& tp (t.derive_path ());
 
         context& ctx (t.ctx);
+        const scope& rs (t.root_scope ());
         const scope& bs (t.base_scope ());
 
         // Inject dependency on the output directory.
@@ -192,6 +193,52 @@ namespace build2
 
           return tt.is_a (libx::static_type) || tt.is_a (liba::static_type) ||
                  tt.is_a (libs::static_type) || tt.is_a (libux::static_type);
+        };
+
+        // Return the automatic predefs header as a prerequisite_target,
+        // creating the target (ad hoc, with cxx.predefs rule hint) if
+        // necessary.
+        //
+        auto auto_predefs = [&rs, &trace] () -> prerequisite_target
+        {
+          dir_path d (rs.out_path () / rs.root_extra->build_dir /
+                      module_build_dir);
+
+          const char* n ("moc_predefs"); // Predefs target name.
+          const target* pt;              // Predefs target.
+
+          // Find or create the target.
+          //
+          if ((pt = rs.ctx.targets.find (
+                 hxx::static_type,
+                 d,
+                 dir_path (), // Always in the out tree.
+                 n,
+                 nullopt,     // Use default extension.
+                 trace)) == nullptr)
+          {
+            auto p (rs.ctx.targets.insert_locked (
+                      hxx::static_type,
+                      move (d),
+                      dir_path (), // Always in the out tree.
+                      n,
+                      nullopt,     // Use default extension.
+                      target_decl::implied,
+                      trace,
+                      true /* skip_find */));
+
+            // Note that this is racy and someone might have created this
+            // target since find() was called.
+            //
+            if (p.second)
+              p.first.rule_hints.insert (nullptr, default_id, "cxx.predefs");
+
+            pt = &p.first;
+          }
+
+          assert (pt->is_a<hxx> ());
+
+          return prerequisite_target (pt, include_type (include_type::adhoc));
         };
 
         // Match static prerequisites.
@@ -276,13 +323,27 @@ namespace build2
               if (pt == dir || pt == &ctgt)
                 continue;
 
-              if (a.operation () == clean_id && !pt->in (*bs.root_scope ()))
+              if (a.operation () == clean_id && !pt->in (rs))
                 continue;
             }
 
             match_async (a, *pt, ctx.count_busy (), t[a].task_count);
 
             pts.emplace_back (pt, pi);
+          }
+
+          // Also start matching the automatic predefs header if enabled.
+          //
+          if (pass_moc_opts (t, "predefs"))
+          {
+            prerequisite_target p (auto_predefs ());
+
+            match_async (a, *p, ctx.count_busy (), t[a].task_count);
+
+            // Note: The predefs header is expected by perform_update() to be
+            //       the pts_n'th element of pts.
+            //
+            pts.push_back (p);
           }
 
           wg.wait ();
@@ -673,12 +734,28 @@ namespace build2
 
         // The correct order of options is as follows:
         //
-        // 1. predefs (via --include) @@ TODO qt.moc.auto_predefs
+        // 1. predefs (via --include)
         // 2. qt.moc.options
         // 3. project poptions (cc.poptions, cxx.poptions)
         // 4. library poptions (*.export.poptions)
         // 5. sys_hdr_dirs
         //
+
+        // Add options for the compiler predefs header if enabled.
+        //
+        // If automatic predefs are enabled the predefs header will be the
+        // pts_n'th element of prerequisite_targets.
+        //
+        if (pass_moc_opts (t, "predefs"))
+        {
+          const target* pt (
+              get_target (t.prerequisite_targets[a][md.pts_n - 1]));
+
+          assert (pt->is_a<hxx> ());
+
+          args.push_back ("--include");
+          args.push_back (pt->as<hxx> ().path ().string ().c_str ());
+        }
 
         append_options (args, t, "qt.moc.options");
 
