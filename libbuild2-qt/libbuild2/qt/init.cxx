@@ -11,6 +11,7 @@
 
 #include <libbuild2/qt/moc/module.hxx>
 #include <libbuild2/qt/moc/target.hxx>
+#include <libbuild2/qt/moc/utility.hxx>
 
 #include <libbuild2/qt/rcc/module.hxx>
 #include <libbuild2/qt/rcc/target.hxx>
@@ -360,6 +361,10 @@ namespace build2
       if (first)
       {
         module& m (extra.module_as<module> ());
+
+        // Register root scope operation callbacks.
+        //
+        register_op_callbacks (rs);
 
         // Register target types and rules.
         //

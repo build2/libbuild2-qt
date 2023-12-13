@@ -27,6 +27,11 @@ namespace build2
 
       bool
       pass_moc_opts (const target&, const char* oc);
+
+      // Register scope operation callbacks.
+      //
+      void
+      register_op_callbacks (scope&);
     }
   }
 }
