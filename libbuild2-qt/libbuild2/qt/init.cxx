@@ -281,6 +281,8 @@ namespace build2
         //
         // qt.moc.auto_sys_hdr_dirs: C++ compiler's system header directories.
         //
+        // See pass_moc_opts() in utility.hxx.
+        //
         // @@ TODO: may make sense to store the variable in the module.
         //
         vp.insert<bool> ("qt.moc.auto_preprocessor");

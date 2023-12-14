@@ -12,6 +12,7 @@
 #include <libbuild2/bin/target.hxx>
 #include <libbuild2/bin/utility.hxx>
 
+#include <libbuild2/qt/moc/utility.hxx>
 
 namespace build2
 {
@@ -135,21 +136,6 @@ namespace build2
       map_ext (const scope& bs, const string& n, const string& e)
       {
         return dyndep_rule::map_extension (bs, n, e, nullptr);
-      }
-
-      // Return true if the specified class of options should be passed to
-      // moc. Valid option classes are `poptions`, `predefs`, and
-      // `sys_hdr_dirs`. Each option class is associated with a variable named
-      // `qt.moc.auto_<class>`.
-      //
-      static bool pass_moc_opts (const target& t, const char* oc)
-      {
-        // Fall back to qt.moc.auto_preprocessor if the variable is null or
-        // undefined.
-        //
-        lookup l (t[string ("qt.moc.auto_") + oc]);
-        return l ? cast<bool> (l)
-                 : cast_true<bool> (t["qt.moc.auto_preprocessor"]);
       }
 
       recipe compile_rule::
