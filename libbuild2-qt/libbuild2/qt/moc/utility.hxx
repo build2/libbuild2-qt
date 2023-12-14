@@ -14,6 +14,9 @@ namespace build2
   {
     namespace moc
     {
+      extern const dir_path module_dir;       // qt.moc/
+      extern const dir_path module_build_dir; // qt.moc/build/
+
       // Return true if the specified class of options should be passed to
       // moc. Valid option classes are `poptions`, `predefs`, and
       // `sys_hdr_dirs`. Each option class is associated with a variable named

@@ -6,6 +6,9 @@ namespace build2
   {
     namespace moc
     {
+      const dir_path module_dir ("qt.moc");
+      const dir_path module_build_dir (dir_path (module_dir) /= "build");
+
       template <typename T>
       static bool
       pass_moc_opts_impl (const T& t, const char* oc)
