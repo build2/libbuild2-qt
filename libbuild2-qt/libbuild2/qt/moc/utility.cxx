@@ -37,19 +37,19 @@ namespace build2
 
       // Scope operation callback that cleans up moc module sidebuilds.
       //
-      // @@ TMP The only case I could find where build/qt.moc/ does not get
-      //        removed by the standard fsdir{} chain (ie, when this callback
-      //        is not registered) was if I built, say,
-      //        libbuild2-qt-tests/moc/ with auto predefs enabled so that
-      //        build/qt.moc/build/moc_predefs.hxx is created, then disabled
-      //        auto predefs again before running b clean on
-      //        libbuild2-qt-build/target/libbuild2-qt-tests/. Are there other
-      //        cases?
+      // For now the only known case where build/qt/moc/ does not get removed
+      // by the standard fsdir{} chain (i.e., when this callback is not
+      // registered) is if we build, say, libbuild2-qt-tests/moc/ with auto
+      // predefs enabled so that build/qt/moc/build/predefs.hxx is created,
+      // then disabled auto predefs again before doing clean on
+      // libbuild2-qt-build/target/libbuild2-qt-tests/.
       //
       static target_state
       clean_sidebuilds (action, const scope& rs, const build2::dir&)
       {
         context& ctx (rs.ctx);
+
+        // @@ TODO clean qt/.
 
         const dir_path& out_root (rs.out_path ());
 
@@ -81,6 +81,8 @@ namespace build2
         return target_state::unchanged;
       }
 
+      // @@ TODO: let's get rid.
+      //
       void
       register_op_callbacks (scope& s)
       {

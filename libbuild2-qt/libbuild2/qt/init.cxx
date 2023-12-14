@@ -282,7 +282,7 @@ namespace build2
         //
         // qt.moc.auto_sys_hdr_dirs: C++ compiler's system header directories.
         //
-        // See pass_moc_opts() in utility.hxx.
+        // See also pass_moc_options() in utility.hxx.
         //
         // @@ TODO: may make sense to store the variable in the module.
         //
@@ -351,12 +351,13 @@ namespace build2
 
       // Load the cxx.predefs module if automatic predefs are enabled.
       //
-      // @@ TMP This decision has to be made every time the module is loaded
-      //        because it's possible that none of the preceding scopes had
-      //        automatic predefs enabled.
+      // This decision has to be made every time the module is loaded because
+      // it's possible that none of the preceding scopes had automatic predefs
+      // enabled (we could restrict this decision only to the root scope but
+      // there is really no strong reason to).
       //
       if (pass_moc_opts (bs, "predefs"))
-        load_module (rs, bs, "cxx.predefs", loc);
+        load_module (rs, rs, "cxx.predefs", loc);
 
       if (first)
       {

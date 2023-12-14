@@ -131,7 +131,7 @@ namespace build2
       // Blank out a prerequisite_target's target but preserve it by moving it
       // to data.
       //
-      static void
+      static inline void
       blank_target (prerequisite_target& p)
       {
         p.data = reinterpret_cast<uintptr_t> (p.target);
@@ -141,7 +141,7 @@ namespace build2
 
       // Return a potentially blanked-out prerequisite_target's target.
       //
-      static const target*
+      static inline const target*
       get_target (const prerequisite_target& p)
       {
         return (p.include & prerequisite_target::include_target) == 0
@@ -173,8 +173,8 @@ namespace build2
         const path& tp (t.derive_path ());
 
         context& ctx (t.ctx);
-        const scope& rs (t.root_scope ());
         const scope& bs (t.base_scope ());
+        const scope& rs (*bs.root_scope ());
 
         // Inject dependency on the output directory.
         //
@@ -200,19 +200,19 @@ namespace build2
         // necessary.
         //
         // The target will be built "on the side" and therefore located in,
-        // for example, out_root/build/qt.moc/build/. See utility.[hc]xx for
+        // for example, out_root/build/qt/moc/build/. See utility.[hc]xx for
         // the path values and also clean_sidebuilds() which removes the side
         // build directory.
         //
         auto auto_predefs = [&rs, &trace] () -> prerequisite_target
         {
-          // The output directory. For example, out_root/build/qt.moc/build/.
+          // The output directory. For example, out_root/build/qt/moc/build/.
           //
           dir_path d (rs.out_path () / rs.root_extra->build_dir /
                       module_build_dir);
 
-          const char* n ("moc_predefs"); // Predefs target name.
-          const target* pt;              // Predefs target.
+          const char* n ("predefs"); // Predefs target name.
+          const target* pt;          // Predefs target.
 
           // Find or create the target.
           //
@@ -242,8 +242,6 @@ namespace build2
 
             pt = &p.first;
           }
-
-          assert (pt->is_a<hxx> ());
 
           return prerequisite_target (pt, include_type (include_type::adhoc));
         };
@@ -339,7 +337,8 @@ namespace build2
             pts.emplace_back (pt, pi);
           }
 
-          // Also start matching the automatic predefs header if enabled.
+          // Also add and start matching the automatic predefs header if
+          // enabled.
           //
           if (pass_moc_opts (t, "predefs"))
           {
@@ -704,13 +703,7 @@ namespace build2
             if (p == nullptr) // Skipped.
               continue;
 
-            // Blank out but preserve the targets of postponed prerequisites.
-            //
-            if (execute_async (a, *p, busy, t[a].task_count) ==
-                target_state::postponed)
-            {
-              blank_target (p);
-            }
+            execute_async (a, *p, busy, t[a].task_count);
           }
 
           wg.wait ();
@@ -755,13 +748,16 @@ namespace build2
         //
         if (pass_moc_opts (t, "predefs"))
         {
+          // Note: we will always have at least one prerequisite.
+          //
           const target* pt (
-              get_target (t.prerequisite_targets[a][md.pts_n - 1]));
+            get_target (t.prerequisite_targets[a][md.pts_n - 1]));
 
-          assert (pt->is_a<hxx> ());
+          const hxx* ht (pt->is_a<hxx> ());
+          assert (ht != nullptr && ht->name == "predefs");
 
           args.push_back ("--include");
-          args.push_back (pt->as<hxx> ().path ().string ().c_str ());
+          args.push_back (ht.path ().string ().c_str ());
         }
 
         append_options (args, t, "qt.moc.options");
