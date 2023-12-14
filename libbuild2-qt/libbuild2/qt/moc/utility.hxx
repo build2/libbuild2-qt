@@ -14,6 +14,10 @@ namespace build2
   {
     namespace moc
     {
+      // To form the complete path do:
+      //
+      //   root.out_path () / root.root_extra->build_dir / X_dir
+      //
       extern const dir_path module_dir;       // qt.moc/
       extern const dir_path module_build_dir; // qt.moc/build/
 

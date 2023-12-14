@@ -199,8 +199,15 @@ namespace build2
         // creating the target (ad hoc, with cxx.predefs rule hint) if
         // necessary.
         //
+        // The target will be built "on the side" and therefore located in,
+        // for example, out_root/build/qt.moc/build/. See utility.[hc]xx for
+        // the path values and also clean_sidebuilds() which removes the side
+        // build directory.
+        //
         auto auto_predefs = [&rs, &trace] () -> prerequisite_target
         {
+          // The output directory. For example, out_root/build/qt.moc/build/.
+          //
           dir_path d (rs.out_path () / rs.root_extra->build_dir /
                       module_build_dir);
 
