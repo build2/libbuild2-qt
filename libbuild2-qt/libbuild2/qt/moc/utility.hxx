@@ -26,20 +26,25 @@ namespace build2
       // Return true if the specified class of options should be passed to
       // moc. Valid option classes are `poptions`, `predefs`, and
       // `sys_hdr_dirs`. Each option class is associated with a variable named
-      // `qt.moc.auto_<class>`.
+      // `qt.moc.auto_<class>`. T is either scope or target.
       //
-      // @@ Make a template (impl utility.txx).
-      //
+      template <typename T>
       bool
-      pass_moc_options (const scope&, const char* option_class);
+      pass_moc_options (const T&, const char* option_class);
 
-      bool
-      pass_moc_options (const target&, const char* option_class);
-
-      // Register scope operation callbacks.
+      // Scope operation callback that cleans up moc module sidebuilds.
       //
-      void
-      register_operation_callbacks (scope&);
+      // For now the only known case where build/qt/moc/ does not get removed
+      // by the standard fsdir{} chain (i.e., when this callback is not
+      // registered) is if we build, say, libbuild2-qt-tests/moc/ with auto
+      // predefs enabled so that build/qt/moc/build/predefs.hxx is created,
+      // then disabled auto predefs again before doing clean on
+      // libbuild2-qt-build/target/libbuild2-qt-tests/.
+      //
+      target_state
+      clean_sidebuilds (action, const scope& rs, const build2::dir&);
     }
   }
 }
+
+#include <libbuild2/qt/moc/utility.txx>

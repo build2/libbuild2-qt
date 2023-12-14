@@ -356,7 +356,7 @@ namespace build2
       // enabled (we could restrict this decision only to the root scope but
       // there is really no strong reason to).
       //
-      if (pass_moc_opts (bs, "predefs"))
+      if (pass_moc_options (bs, "predefs"))
         load_module (rs, rs, "cxx.predefs", loc);
 
       if (first)
@@ -365,7 +365,13 @@ namespace build2
 
         // Register root scope operation callbacks.
         //
-        register_op_callbacks (rs);
+        // It feels natural to clean up sidebuilds as a post operation but
+        // that prevents the (otherwise-empty) out root directory to be
+        // cleaned up (via the standard fsdir{} chain).
+        //
+        rs.operation_callbacks.emplace (
+            perform_clean_id,
+            scope::operation_callback {&clean_sidebuilds, nullptr /*post*/});
 
         // Register target types and rules.
         //

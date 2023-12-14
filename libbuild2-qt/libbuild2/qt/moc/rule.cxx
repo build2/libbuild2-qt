@@ -340,7 +340,7 @@ namespace build2
           // Also add and start matching the automatic predefs header if
           // enabled.
           //
-          if (pass_moc_opts (t, "predefs"))
+          if (pass_moc_options (t, "predefs"))
           {
             prerequisite_target p (auto_predefs ());
 
@@ -495,7 +495,7 @@ namespace build2
 
             // Include cc.poptions and cxx.poptions.
             //
-            if (pass_moc_opts (t, "poptions"))
+            if (pass_moc_options (t, "poptions"))
             {
               append_options (cs, t, cxx_mod->c_poptions);
               append_options (cs, t, cxx_mod->x_poptions);
@@ -507,7 +507,7 @@ namespace build2
 
             // Include the system header directory paths in the checksum.
             //
-            if (pass_moc_opts (t, "sys_hdr_dirs"))
+            if (pass_moc_options (t, "sys_hdr_dirs"))
             {
               for (const dir_path& d: cxx_mod->sys_hdr_dirs)
                 append_option (cs, d.string ().c_str ());
@@ -746,7 +746,7 @@ namespace build2
         // If automatic predefs are enabled the predefs header will be the
         // pts_n'th element of prerequisite_targets.
         //
-        if (pass_moc_opts (t, "predefs"))
+        if (pass_moc_options (t, "predefs"))
         {
           // Note: we will always have at least one prerequisite.
           //
@@ -757,7 +757,7 @@ namespace build2
           assert (ht != nullptr && ht->name == "predefs");
 
           args.push_back ("--include");
-          args.push_back (ht.path ().string ().c_str ());
+          args.push_back (ht->path ().string ().c_str ());
         }
 
         append_options (args, t, "qt.moc.options");
@@ -765,7 +765,7 @@ namespace build2
         // Add cc.poptions, cxx.poptions, prerequisite library options, and
         // -I's for the system header directories.
         //
-        if (pass_moc_opts (t, "poptions"))
+        if (pass_moc_options (t, "poptions"))
         {
           append_options (args, t, cxx_mod->c_poptions);
           append_options (args, t, cxx_mod->x_poptions);
@@ -774,7 +774,7 @@ namespace build2
         for (const string& o: md.lib_opts)
           args.push_back (o.c_str ());
 
-        if (pass_moc_opts (t, "sys_hdr_dirs"))
+        if (pass_moc_options (t, "sys_hdr_dirs"))
         {
           for (const dir_path& d: cxx_mod->sys_hdr_dirs)
           {
