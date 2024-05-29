@@ -7,11 +7,17 @@ ixx{*}: extension = ixx
 txx{*}: extension = txx
 cxx{*}: extension = cxx
 
-# Assume headers are importable unless stated otherwise.
-#
-hxx{*}: cxx.importable = true
+if ($cxx.target.system == 'win32-msvc')
+  cc.poptions += -D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS
 
-if ($cxx.id == 'gcc' && $cxx.version.major >= 13)
-  cxx.coptions += -Wno-dangling-reference
+if ($cxx.class == 'msvc')
+  cc.coptions += /wd4251 /wd4275 /wd4800
+elif ($cxx.id == 'gcc')
+{
+  cxx.coptions += -Wno-maybe-uninitialized -Wno-free-nonheap-object # libbutl
+
+  if ($cxx.version.major >= 13)
+    cxx.coptions += -Wno-dangling-reference
+}
 elif ($cxx.id.type == 'clang' && $cxx.version.major >= 15)
   cxx.coptions += -Wno-unqualified-std-cast-call
