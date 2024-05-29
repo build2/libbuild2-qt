@@ -2,10 +2,15 @@ qt.version = $config.libbuild2_qt_tests.qt
 
 using qt.rcc
 
-if ($qt.version == 5)
-  import libs = libQt5Core%lib{Qt5Core}
-else
-  import libs = libQt6Core%lib{Qt6Core}
+switch $qt.version
+{
+  case 0
+    libs =
+  case 5
+    import libs = libQt5Core%lib{Qt5Core}
+  case 6
+    import libs = libQt6Core%lib{Qt6Core}
+}
 
 # Use RCC to generate a C++ header, a C++ source file, and an external
 # resource (binary data).

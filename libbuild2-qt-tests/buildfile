@@ -1,1 +1,13 @@
-./: {*/ -build/} doc{README.md} legal{LICENSE AUTHORS} manifest
+# Exclude all the tests except multi-load in the load-only configuration.
+#
+# Note that they will still be pulled in during dist so we must handle the 0
+# version in their buildfiles.
+#
+./: {*/ -build/ -multi-load/}: include = ($config.libbuild2_qt_tests.qt != 0)
+./: multi-load/
+
+./: doc{README.md} legal{LICENSE AUTHORS} manifest
+
+# Make sure loaded for noop.
+#
+include multi-load/

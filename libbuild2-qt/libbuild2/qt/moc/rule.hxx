@@ -28,9 +28,9 @@ namespace build2
       struct data
       {
         const uint64_t    version;   // qt.version
-        const exe&        ctgt;      // Moc compiler target.
+        const exe*        ctgt;      // Moc compiler target (NULL if load-only).
         const string&     csum;      // Moc compiler checksum.
-        const strings&    cenv;      // Moc compiler environment.
+        const strings*    cenv;      // Moc compiler environment if any.
         const string      cenv_csum; // Environment checksum.
         const cc::module* cxx_mod;   // The cxx module.
       };

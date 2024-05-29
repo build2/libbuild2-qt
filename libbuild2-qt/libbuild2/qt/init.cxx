@@ -38,19 +38,22 @@ namespace build2
       //     qt.version [uint64]
       //
       // The Qt version being used. Must be set before loading any of the
-      // `qt` modules. Valid values are 5 and 6.
+      // `qt` modules. Valid values are 5 and 6 (the special value 0 is used
+      // for the load-only testing of the module).
       //
       //-
       const variable& var (first
                            ? vp.insert<uint64_t> ("qt.version")
                            : *vp.find ("qt.version"));
 
-      if (const uint64_t* v = cast_null<uint64_t> (bs[var]))
+      if (const uint64_t* pv = cast_null<uint64_t> (bs[var]))
       {
-        if (*v < 5 || *v > 6)
-          fail (loc) << "invalid " << var << " value " << *v << endf;
+        uint64_t v (*pv);
 
-        return *v;
+        if (!(v == 0 || (v >= 5 && v <= 6)))
+          fail (loc) << "invalid " << var << " value " << v << endf;
+
+        return v;
       }
       else
         fail (loc) << "set " << var << " before the using directive" << endf;
@@ -63,9 +66,9 @@ namespace build2
     //
     struct compiler_info
     {
-      const exe&     ctgt; // Compiler target.
-      const string&  csum; // Compiler checksum.
-      const strings* cenv; // Compiler environment.
+      const exe*                      ctgt; // Compiler target.
+      reference_wrapper<const string> csum; // Compiler checksum.
+      const strings*                  cenv; // Compiler environment if any.
     };
 
     // Import a Qt compiler and print the configuration report.
@@ -174,7 +177,7 @@ namespace build2
           rs.assign<uint64_t> ("qt." + name + ".version.patch") = v.patch ();
         }
 
-        return compiler_info {*tgt, *sum, env};
+        return compiler_info {tgt, *sum, env};
       }
       else
       {
@@ -206,17 +209,28 @@ namespace build2
       uint64_t v (check_version (bs, loc, first));
       if (first)
       {
-        optional <compiler_info> ci (import_exe (rs, "moc", v, loc, opt));
+        optional<compiler_info> ci;
 
-        if (!ci)
-          return false;
+        if (v != 0)
+        {
+          ci = import_exe (rs, "moc", v, loc, opt);
+
+          if (!ci)
+            return false;
+
+          assert (ci->ctgt != nullptr);
+        }
+        else
+          ci = compiler_info {nullptr, empty_string, nullptr};
 
         // Hash the environment (used for change detection).
         //
-        string cenv_csum (hash_environment (*ci->cenv));
+        string cenv_csum;
+        if (ci->cenv != nullptr)
+          hash_environment (*ci->cenv);
 
         extra.set_module (new module (data {v, ci->ctgt, ci->csum,
-                                            *ci->cenv, move (cenv_csum),
+                                            ci->cenv, move (cenv_csum),
                                             nullptr}));
       }
       else
@@ -304,7 +318,8 @@ namespace build2
         //
         config::append_config<strings> (rs, rs, "qt.moc.options", nullptr);
 
-        config::save_environment (rs, m.cenv);
+        if (m.cenv != nullptr)
+          config::save_environment (rs, *m.cenv);
       }
 
       return true;
@@ -444,10 +459,19 @@ namespace build2
       uint64_t v (check_version (bs, loc, first));
       if (first)
       {
-        optional<compiler_info> ci (import_exe (rs, "rcc", v, loc, opt));
+        optional<compiler_info> ci;
 
-        if (!ci)
-          return false;
+        if (v != 0)
+        {
+          ci = import_exe (rs, "rcc", v, loc, opt);
+
+          if (!ci)
+            return false;
+
+          assert (ci->ctgt != nullptr);
+        }
+        else
+          ci = compiler_info {nullptr, empty_string, nullptr};
 
         extra.set_module (new module (data {v, ci->ctgt, ci->csum}));
       }
@@ -584,10 +608,19 @@ namespace build2
 
       if (first)
       {
-        optional<compiler_info> ci (import_exe (rs, "uic", v, loc, opt));
+        optional<compiler_info> ci;
 
-        if (!ci)
-          return false;
+        if (v != 0)
+        {
+          ci = import_exe (rs, "uic", v, loc, opt);
+
+          if (!ci)
+            return false;
+
+          assert (ci->ctgt != nullptr);
+        }
+        else
+          ci = compiler_info {nullptr, empty_string, nullptr};
 
         extra.set_module (new module (data {v, ci->ctgt, ci->csum}));
       }

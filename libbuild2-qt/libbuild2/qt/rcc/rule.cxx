@@ -87,8 +87,8 @@ namespace build2
 
         // For update inject dependency on the RCC compiler target.
         //
-        if (a == perform_update_id)
-          inject (a, t, ctgt);
+        if (a == perform_update_id && ctgt != nullptr)
+          inject (a, t, *ctgt);
 
         // Match prerequisites.
         //
@@ -300,6 +300,10 @@ namespace build2
       {
         tracer trace ("qt::rcc::compile_rule::perform_update");
 
+        if (ctgt == nullptr)
+          fail << "attempt to " << diag_do (a, xt)
+               << " during load-only testing (qt.version=0)";
+
         const file& t (xt.as<file> ());
         const path& tp (t.path ());
 
@@ -328,7 +332,7 @@ namespace build2
 
         // Prepare the rcc command line.
         //
-        const process_path& pp (ctgt.process_path ());
+        const process_path& pp (ctgt->process_path ());
         cstrings args {pp.recall_string ()};
 
         append_options (args, t, "qt.rcc.options");

@@ -10,7 +10,8 @@ extra integration steps are required other than the `using` directive in your
 
 For development build instructions see [`libbuild2-hello/README`][build].
 Note that the tests require a host configuration (for the Qt compilers) and
-the explicit specification of the Qt version to use. For example:
+the explicit specification of the Qt version to use (currently `5` or `6`).
+For example:
 
 ```
 bdep init --empty
@@ -22,6 +23,9 @@ bdep config create @target ../libbuild2-qt-build/target/ cc config.cxx=g++
 bdep init @module -d libbuild2-qt/
 bdep init @target -d libbuild2-qt-tests/ config.libbuild2_qt_tests.qt=6
 ```
+
+The special Qt version `0` is used to request a load-only test configuration,
+where only the successful loading of the module is tested.
 
 
 @@ TODO Explain target types and how to use them. E.g. something like this:

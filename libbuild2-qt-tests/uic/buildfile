@@ -2,10 +2,15 @@ qt.version = $config.libbuild2_qt_tests.qt
 
 using qt.uic
 
-if ($qt.version == 5)
-  import libs = libQt5Widgets%lib{Qt5Widgets}
-else
-  import libs = libQt6Widgets%lib{Qt6Widgets}
+switch $qt.version
+{
+  case 0
+    libs =
+  case 5
+    import libs = libQt5Widgets%lib{Qt5Widgets}
+  case 6
+    import libs = libQt6Widgets%lib{Qt6Widgets}
+}
 
 # Source file and libraries.
 #

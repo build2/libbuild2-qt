@@ -51,8 +51,8 @@ namespace build2
 
         // For update inject dependency on the uic compiler target.
         //
-        if (a == perform_update_id)
-          inject (a, t, ctgt);
+        if (a == perform_update_id && ctgt != nullptr)
+          inject (a, t, *ctgt);
 
         switch (a)
         {
@@ -69,6 +69,10 @@ namespace build2
       perform_update (action a, const target& xt) const
       {
         tracer trace ("qt::uic::compile_rule::perform_update");
+
+        if (ctgt == nullptr)
+          fail << "attempt to " << diag_do (a, xt)
+               << " during load-only testing (qt.version=0)";
 
         context& ctx (xt.ctx);
 
@@ -132,7 +136,7 @@ namespace build2
         path relo (relative (tp));
         path rels (relative (s.path ()));
 
-        const process_path& pp (ctgt.process_path ());
+        const process_path& pp (ctgt->process_path ());
         cstrings args {pp.recall_string ()};
 
         append_options (args, t, "qt.uic.options");

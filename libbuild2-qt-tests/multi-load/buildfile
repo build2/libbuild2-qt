@@ -1,1 +1,5 @@
 ./: */
+
+# Make sure loaded for noop.
+#
+include */

@@ -2,10 +2,15 @@ qt.version = $config.libbuild2_qt_tests.qt
 
 using qt.moc
 
-if ($qt.version == 5)
-  import libs = libQt5Core%lib{Qt5Core}
-else
-  import libs = libQt6Core%lib{Qt6Core}
+switch $qt.version
+{
+  case 0
+    libs =
+  case 5
+    import libs = libQt5Core%lib{Qt5Core}
+  case 6
+    import libs = libQt6Core%lib{Qt6Core}
+}
 
 # Headers, source files.
 #
@@ -26,9 +31,10 @@ exe{driver}: moc{sink}                        # Included.
 hxx{source}: in{source}
 
 # Utility library through which lib{Qt*Core}'s library metadata (poptions) is
-# made available to moc (see below for details).
+# made available to moc (see below for details). Note: the rule hint is for
+# when libs is empty (see above).
 #
-libue{QtCoreMeta}: $libs
+[rule_hint=cxx] libue{QtCoreMeta}: $libs
 
 exe{driver}: libue{QtCoreMeta}
 

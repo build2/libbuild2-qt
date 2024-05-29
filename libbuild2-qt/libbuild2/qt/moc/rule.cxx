@@ -182,8 +182,8 @@ namespace build2
 
         // For update inject dependency on the MOC compiler target.
         //
-        if (a == perform_update_id)
-          inject (a, t, ctgt);
+        if (a == perform_update_id && ctgt != nullptr)
+          inject (a, t, *ctgt);
 
         // Return true if a target type is a library.
         //
@@ -325,7 +325,7 @@ namespace build2
 
               // Don't add injected fsdir{} or compiler target twice.
               //
-              if (pt == dir || pt == &ctgt)
+              if (pt == dir || pt == ctgt)
                 continue;
 
               if (a.operation () == clean_id && !pt->in (rs))
@@ -358,7 +358,7 @@ namespace build2
           //
           for (prerequisite_target& pt: pts)
           {
-            if (pt == dir || pt == &ctgt) // See above.
+            if (pt == dir || pt == ctgt) // See above.
               continue;
 
             if (is_lib (pt->type ()))
@@ -660,6 +660,10 @@ namespace build2
       {
         tracer trace ("qt::moc::compile_rule::perform_update");
 
+        if (ctgt == nullptr)
+          fail << "attempt to " << diag_do (a, xt)
+               << " during load-only testing (qt.version=0)";
+
         const file& t (xt.as<file> ());
         const path& tp (t.path ());
 
@@ -729,7 +733,7 @@ namespace build2
 
         // Prepare the moc command line.
         //
-        const process_path& pp (ctgt.process_path ());
+        const process_path& pp (ctgt->process_path ());
         cstrings args {pp.recall_string ()};
 
         // The correct order of options is as follows:

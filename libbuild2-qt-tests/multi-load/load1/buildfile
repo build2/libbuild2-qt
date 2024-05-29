@@ -5,3 +5,7 @@ using qt.rcc
 using qt.uic
 
 ./:
+% test
+{{
+  true
+}}
