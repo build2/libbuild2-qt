@@ -13,7 +13,10 @@ depends: * build2 >= 0.16.0
 depends: * bpkg >= 0.16.0
 tests: * libbuild2-qt-tests == $
 
-builds: none
+# Do module load-only testing for all configurations.
+#
+builds: all
+default-build-config: { config.libbuild2_qt_tests.qt=0 }+ libbuild2-qt-tests
 
 qt5-builds: default
 qt5-build-config: { config.libbuild2_qt_tests.qt=5 }+ libbuild2-qt-tests
