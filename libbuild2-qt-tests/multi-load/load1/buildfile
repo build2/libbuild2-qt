@@ -7,5 +7,6 @@ using qt.uic
 ./:
 % test
 {{
-  true
+  diag test $>
+  ($qt.moc.loaded && $qt.rcc.loaded && $qt.uic.loaded ? true : false)
 }}
