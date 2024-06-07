@@ -243,11 +243,50 @@ namespace build2
 
               p.first.prerequisites (
                 prerequisites {prerequisite (fsdir::static_type,
-                                             move (d),
+                                             d,
                                              dir_path (),
                                              string (),
                                              string (),
                                              rs)});
+
+              p.second.unlock ();
+
+              // Also create the fsdir{} target chain all the way to out_root
+              // (see also clean_sidebuilds()).
+              //
+              auto insert_parent_fsdir =
+                [&rs, &trace] (dir_path&& d,
+                               const auto& insert_parent_fsdir) -> void
+              {
+                auto p (rs.ctx.targets.insert_locked (
+                          fsdir::static_type,
+                          d,
+                          dir_path (), // Always in the out tree.
+                          string (),
+                          string (),
+                          target_decl::implied,
+                          trace));
+
+                if (p.second)
+                {
+                  d.make_directory ();
+
+                  p.first.prerequisites (
+                    prerequisites {prerequisite (fsdir::static_type,
+                                                 d,
+                                                 dir_path (),
+                                                 string (),
+                                                 string (),
+                                                 rs)});
+
+                  p.second.unlock ();
+
+                  if (d != rs.out_path ())
+                    insert_parent_fsdir (move (d), insert_parent_fsdir);
+                }
+              };
+
+              insert_parent_fsdir (move (d), insert_parent_fsdir);
             }
 
             pt = &p.first;

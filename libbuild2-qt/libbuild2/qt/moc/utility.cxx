@@ -16,6 +16,8 @@ namespace build2
       target_state
       clean_sidebuilds (action, const scope& rs, const build2::dir&)
       {
+        // NOTE: see also the auto_predefs() lambda in compile_rule::apply().
+
         context& ctx (rs.ctx);
 
         const dir_path& out_root (rs.out_path ());
