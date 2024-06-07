@@ -226,7 +226,7 @@ namespace build2
           {
             auto p (rs.ctx.targets.insert_locked (
                       hxx::static_type,
-                      move (d),
+                      d,
                       dir_path (), // Always in the out tree.
                       n,
                       nullopt,     // Use default extension.
@@ -238,7 +238,17 @@ namespace build2
             // target since find() was called.
             //
             if (p.second)
+            {
               p.first.rule_hints.insert (nullptr, default_id, "cxx.predefs");
+
+              p.first.prerequisites (
+                prerequisites {prerequisite (fsdir::static_type,
+                                             move (d),
+                                             dir_path (),
+                                             string (),
+                                             string (),
+                                             rs)});
+            }
 
             pt = &p.first;
           }
