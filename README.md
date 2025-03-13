@@ -2,16 +2,15 @@
 
 Qt compilers (`moc`, `rcc`, `uic`) build system module for `build2`.
 
-@@ TODO: ref to documentation.
-
 This module is part of the standard pre-installed `build2` modules and no
 extra integration steps are required other than the `using` directive in your
 `buildfile`.
 
+User documentation can be found in `libbuild2-qt/PACKAGE-README.md`.
+
 For development build instructions see [`libbuild2-hello/README`][build].
-Note that the tests require a host configuration (for the Qt compilers) and
-the explicit specification of the Qt version to use (currently `5` or `6`).
-For example:
+Note that the tests require a host configuration (for the Qt compilers). For
+example:
 
 ```
 bdep init --empty
@@ -26,13 +25,5 @@ bdep init @target -d libbuild2-qt-tests/ config.libbuild2_qt_tests.qt=6
 
 The special Qt version `0` is used to request a load-only test configuration,
 where only the successful loading of the module is tested.
-
-
-@@ TODO Explain target types and how to use them. E.g. something like this:
-
-        cxx{moc_*} is generated from hxx{} and should be compiled but can be
-        included.
-
-        moc{} is generated from cxx{} and must be included.
 
 [build]: https://github.com/build2/libbuild2-hello
