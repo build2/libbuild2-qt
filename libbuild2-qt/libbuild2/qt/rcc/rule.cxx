@@ -129,6 +129,16 @@ namespace build2
         // write them only after rcc has been run because the dynamic
         // dependencies are extracted as a byproduct of recipe execution.
         //
+        // @@ TMP It took me a while to remember why generated resources need
+        //    to be declared as static prerquisites so thought it would help
+        //    to explain it more explicitly.
+        //
+        // Note that it is due to the use of the byproduct approach that
+        // generated resources have to be declared as static prerequisites of
+        // the rcc output target otherwise they will not exist when rcc is run
+        // for the first time (ever, or after a new generated resource was
+        // added to the build) and thus rcc would keep failing.
+        //
         depdb dd (tp + ".d");
         {
           // First should come the rule name/version.
@@ -217,7 +227,7 @@ namespace build2
                   nullptr /* map_ext */, file::static_type).first)
             {
               // Note that static prerequisites are never written to the
-              // depdb.
+              // depdb (see above).
               //
               if (optional<bool> u = inject_existing_file (
                     trace, "resource file",
