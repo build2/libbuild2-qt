@@ -1,7 +1,7 @@
 # libbuild2-qt
 
 This module provides compilation support for the Qt `moc`, `rcc`, and `uic`
-compiler.
+compilers.
 
 ## Usage overview
 
@@ -88,33 +88,34 @@ using qt.moc
 ### `moc` configuration variables
 
 ```
-[strings] qt.moc.options ?=
-[bool]    qt.moc.auto_preprocessor ?= true
-[bool]    qt.moc.auto_poptions ?= $qt.moc.auto_preprocessor
+[strings] qt.moc.options             ?= [null]
+[bool]    qt.moc.auto_preprocessor   ?= true
+[bool]    qt.moc.auto_poptions       ?= $qt.moc.auto_preprocessor
+[bool]    qt.moc.auto_predefs        ?= $qt.moc.auto_preprocessor
+[bool]    qt.moc.auto_sys_hdr_dirs   ?= $qt.moc.auto_preprocessor
+[bool]    qt.moc.include_with_quotes ?= false
 ```
 
-* `qt.moc.options`: Options that will be passed directly to `moc`.
+* `qt.moc.options`: Options that will be passed directly to `moc`. Default
+  value is null.
 
 * `qt.moc.auto_preprocessor`: Fallback variable used if any of the other
-  `qt.moc.auto_*` variables are null or undefined.
+  `qt.moc.auto_*` variables are null or undefined. Default value is `true`.
 
 * `qt.moc.auto_poptions`: If `true`, automatically pass the project poptions
   (`cc.poptions` and `cxx.poptions`) to `moc`. Default value is the value
-  of `qt.moc.auto_preprocessor`
+  of `qt.moc.auto_preprocessor`.
 
 * `qt.moc.auto_predefs`: If `true`, automatically pass the C++ compiler's
   pre-defined macros to `moc`. Default value is the value of
   `qt.moc.auto_preprocessor`.
 
-#### `qt.moc.auto_sys_hdr_dirs`
+* `qt.moc.auto_sys_hdr_dirs`: If `true`, automatically pass the C++ compiler's
+  system header directories to `moc`. Default value is the value of
+  `qt.moc.auto_preprocessor`.
 
-If `true`, automatically pass the C++ compiler's system header directories to
-`moc`.
-
-#### `qt.moc.include_with_quotes`
-
-If `true`, `moc` header outputs will include their source headers with quotes
-instead of brackets.
+* `qt.moc.include_with_quotes`: If `true`, `moc` header outputs will include
+  their source headers with quotes instead of brackets.
 
 ### `moc` target types
 
@@ -133,7 +134,7 @@ automoc{}: target{}
    prerequisites that matched. See below for more information.
 
 
-### Using `moc` with the `automoc{}` Target Type
+### Using `moc` with the `automoc{}` target type
 
 ```
 exe{hello}: {hxx cxx}{hello} automoc{hello}
@@ -150,10 +151,10 @@ synthesized dependency).
 The synthesized targets will be named and incorporated into the build
 according to the Qt conventions described in the *Compiling C++ source files
 with `moc`*, *Compiling C++ header files with `moc`*, and *Consuming `moc`
-Outputs* sections.
+outputs* sections.
 
 
-### Using `moc` without the `automoc{}` Target Type
+### Using `moc` without the `automoc{}` target type
 
 Foregoing the `automoc{}` target type comes at the cost of having to use more
 target types and having to explicitly declare every dependency involving `moc`
@@ -161,9 +162,9 @@ outputs:
 - The dependency of the primary target on each `moc` output
 - The dependency of each `moc` output on its input file
 - Potentially even some otherwise implicit dependencies (see *Consuming `moc`
-  Outputs*)
+  outputs*)
 
-#### Compiling C++ Source Files with `moc`
+#### Compiling C++ source files with `moc`
 
 According to convention, `moc`-compiling `foo.cxx` should produce `foo.moc`
 (however the extension can be changed using the `extension` target
@@ -173,7 +174,7 @@ type-specific variable). The dependency declaration would look like this:
 moc{foo}: cxx{foo}
 ```
 
-#### Compiling C++ Header Files with `moc`
+#### Compiling C++ header files with `moc`
 
 According to convention, `moc`-compiling `foo.hxx` should produce
 `moc_foo.cxx`. The dependency declaration would look like this:
@@ -199,15 +200,15 @@ explicit rule hint is necessary:
 [rule_hint=qt.moc] cxx{foo_bar}: hxx{foo}
 ```
 
-#### Combined Example (C++ Header and Source File)
+#### Combined example (C++ header and source file)
 
 The following example shows a header and a source file that will be
 `moc`-compiled and their outputs incorporated into an executable (see
-*Consuming `moc` Outputs* for details):
+*Consuming `moc` outputs* for details):
 
 ```
-exe{hello}: {hxx cxx}{hello}          # Primary source files
-exe{hello}: cxx{moc_hello} moc{hello} # Moc outputs
+exe{hello}: {hxx cxx}{hello}          # Primary source files.
+exe{hello}: cxx{moc_hello} moc{hello} # Moc outputs.
 
 cxx{moc_hello}: hxx{hello} # Compile hello.hxx with moc.
 moc{hello}:     cxx{hello} # Compile hello.cxx with moc.
@@ -218,7 +219,7 @@ error-prone to maintain these dependencies as the size of the project grows
 and the number of files that have to be compiled by `moc` increases. This is
 where the `automoc{}` target type can help.
 
-#### Consuming `moc` Outputs (Compilation vs. Inclusion)
+#### Consuming `moc` outputs (compilation vs. inclusion)
 ##### `cxx{moc_foo}`
 Based on a survey of the Qt codebase the convention is (or was, until
 recently; see below) that `moc_*.cxx` outputs (produced from a C++ header)
@@ -257,11 +258,11 @@ By convention `moc{}` outputs (produced from a C++ source file) are included,
 typically by `foo.cxx` in the case of `foo.moc`.
 
 This is really the only sensible option because if `foo.moc` were compiled it
-would have to include `foo.cxx` in order bring in the declarations of the
+would have to include `foo.cxx` in order to bring in the declarations of the
 things it's implementing. But then `foo.cxx` could no longer be compiled
 otherwise its definitions would be included in multiple translation units.
 
-### C++ Compiler Predefs Header
+### C++ compiler predefs header
 
 It's common practice to pass a header containing the compiler's pre-defined
 macros to `moc`. By default the `moc` module will automatically generate this
@@ -298,34 +299,37 @@ cxx{moc_bar}: qt.moc.auto_predefs = true
 
 ```
 
-## The `rcc` Module
+## `rcc` module
 
-This module runs `rcc` (the Qt Resource Compiler) on a Qt Resource Collection
-file (`.qrc`) producing either a C++ source file or an binary file ("external
-resource").
+The `rcc` module runs `rcc` (the Qt Resource Compiler) on Qt Resource
+Collection files (`.qrc`) producing either a C++ source file or an binary file
+("external resource").
 
 Loading the `rcc` module:
 
 ```
-qt.version = 6
-
 using qt.rcc
 ```
 
-### `rcc` Configuration Variables
+### `rcc` configuration variables
 
-#### `qt.rcc.options`
+```
+[strings] qt.rcc.options ?= [null]
+```
 
-Options that will be passed directly to `rcc`.
+* `qt.rcc.options`: Options that will be passed directly to `rcc`. Default
+  value is null.
 
-### `rcc` Target Types
+### `rcc` target types
 
-#### `qrc{}`
+```
+qrc{}: file
+```
 
-The `qrc{}` target type represents a Qt Resource Collection file, the input
-file type of the `rcc` program. It has the `.qrc` file extension.
+* `qrc{}`: The `qrc{}` target type represents a Qt Resource Collection file,
+  the input file type of the `rcc` program. It has the `.qrc` file extension.
 
-### Compiling Resource Collection Files with `rcc`
+### Compiling resource collection files with `rcc`
 
 According to convention, `rcc`-compiling `qrc{foo}` into C++ source code (that
 embeds the declared resources) should produce a file named `cxx{qrc_foo}`, but
@@ -360,7 +364,7 @@ The `rcc` module will track changes to the resources declared in `hello.qrc`
 -- `foo.png` and `bar.png` in this case -- and re-run `rcc` whenever any of
 them are modified.
 
-### Generated Resources
+### Generated resources
 
 Generated resources must be declared as static prerequisites of the output
 target otherwise it is not possible to ensure they always exist before `rcc`
@@ -394,7 +398,7 @@ cxx{qrc_hello}: qrc{hello} file{baz.txt}
 
 ```
 
-### External Resources (Binary Resource Files)
+### External resources (binary resource files)
 
 According to convention, `rcc`-compiling `qrc{foo}` into an external resource
 file should produce a file named `foo.rcc`. Binary output is selected by
@@ -415,34 +419,38 @@ target:
 exe{hello}: file{hello.rcc}: include = posthoc
 ```
 
-## The `uic` Module
+## `uic` module
 
-This module runs `uic` (the Qt User Interface Compiler) on Qt user interface
-definition files (`.ui`) to produce a C++ header file implementing the user
-interface.
+Th `uic` module runs `uic` (the Qt User Interface Compiler) on Qt user
+interface definition files (`.ui`) to produce a C++ header file implementing
+the user interface.
 
 Loading the `uic` module:
 
 ```
-qt.version = 6
-
 using qt.uic
 ```
 
-### `uic` Configuration Variables
+### `uic` configuration variables
 
-#### `qt.uic.options`
+```
+[strings] qt.uic.options ?= [null]
+```
 
-Options that will be passed directly to `uic`.
+* `qt.uic.options`: Options that will be passed directly to `uic`. Default
+  value is null.
 
-### `uic` Target Types
+### `uic` target types
 
-#### `ui{}`
+```
+ui{}: file
+```
 
-The `ui{}` target type represents a Qt User Interface Definition file, the
-input file type of the `uic` program. It has the `.ui` file extension.
+* `ui{}`: The `ui{}` target type represents a Qt User Interface Definition
+  file, the input file type of the `uic` program. It has the `.ui` file
+  extension.
 
-### Compiling User Interface Definition Files with `uic`
+### Compiling user interface definition files with `uic`
 
 According to convention, `uic`-compiling `ui{foo}` should produce a file named
 `hxx{ui_foo}`, but any naming scheme can be used.
