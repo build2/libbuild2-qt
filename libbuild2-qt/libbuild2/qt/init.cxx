@@ -37,23 +37,20 @@ namespace build2
       //-
       //     qt.version [uint64]
       //
-      // The Qt version being used. Must be set before loading any of the
-      // `qt` modules. Valid values are 5 and 6.
+      // The Qt version being used. Must be set before loading any of the `qt`
+      // modules. Valid values are 5 and 6. Default value is 6.
       //
       //-
       const variable& var (first
                            ? vp.insert<uint64_t> ("qt.version")
                            : *vp.find ("qt.version"));
 
-      if (const uint64_t* v = cast_null<uint64_t> (bs[var]))
-      {
-        if (*v < 5 || *v > 6)
-          fail (loc) << "invalid " << var << " value " << *v << endf;
+      uint64_t v (cast_default<uint64_t> (bs[var], 6));
 
-        return *v;
-      }
-      else
-        fail (loc) << "set " << var << " before the using directive" << endf;
+      if (v < 5 || v > 6)
+        fail (loc) << "invalid " << var << " value " << v << endf;
+
+      return v;
     }
 
     // Information extracted from the compiler (moc, rcc, or uic).
