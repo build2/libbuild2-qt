@@ -20,7 +20,7 @@ bdep config create @module ../libbuild2-qt-build/module/ --type build2 cc config
 bdep config create @target ../libbuild2-qt-build/target/ cc config.cxx=g++
 
 bdep init @module -d libbuild2-qt/
-bdep init @target -d libbuild2-qt-tests/ config.libbuild2_qt_tests.qt=6
+bdep init @target -d libbuild2-qt-tests/ [config.libbuild2_qt_tests.qt=6]
 ```
 
 The special Qt version `0` is used to request a load-only test configuration,
