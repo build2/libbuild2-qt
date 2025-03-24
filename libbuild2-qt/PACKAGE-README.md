@@ -203,8 +203,8 @@ target-specific variable). The dependency declaration would look like this:
 moc{foo}: cxx{foo}
 ```
 
-Note that in this case the generated file is normally include at the end
-of `foo.cxx`.
+Note that in this case the generated file is normally included at the end of
+`foo.cxx`.
 
 
 #### Compiling header files with `moc`
@@ -263,7 +263,7 @@ file. For example, if `moc_foo.cxx` is included by `foo.cxx`, it makes
 compiled with `moc`, then `foo.moc` ends up depending on `moc_foo.cxx`
 transitively via `foo.cxx`.
 
-Handling this case requires the addition of the following expliciti dependency
+Handling this case requires the addition of the following explicit dependency
 declaration:
 
 ```
