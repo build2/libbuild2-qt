@@ -1,9 +1,9 @@
 using in
 
-# Note that the special 0 Qt version is used for load-only testing (see the
-# root buildfile for details).
+# The special 0 Qt version is used for load-only testing (see the root
+# buildfile for details).
 #
-config [uint64] config.libbuild2_qt_tests.qt ?= 6
+config [uint64] config.libbuild2_qt_tests.qt ?= 0
 
 if! ($config.libbuild2_qt_tests.qt == 0 ||  \
      ($config.libbuild2_qt_tests.qt >= 5 && \
