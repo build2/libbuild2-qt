@@ -9,8 +9,8 @@ license: MIT ; MIT License.
 description-file: README.md
 url: https://github.com/build2/libbuild2-qt
 email: users@build2.org
-depends: * build2 >= 0.16.0
-depends: * bpkg >= 0.16.0
+depends: * build2 >= 0.18.0-
+depends: * bpkg >= 0.18.0-
 
 depends: * { Qt5Moc Qt5Rcc Qt5Uic }     ^5.15.8 ? ($config.libbuild2_qt_tests.qt == 5)
 depends:   { libQt5Core libQt5Widgets } ^5.15.8 ? ($config.libbuild2_qt_tests.qt == 5)
