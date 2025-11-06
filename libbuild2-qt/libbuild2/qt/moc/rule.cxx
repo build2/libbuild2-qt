@@ -536,7 +536,7 @@ namespace build2
           // Then the options checksum.
           //
           {
-            sha256 cs;
+            xxh64 cs;
 
             // Note: see below for the order.
             //

@@ -107,7 +107,7 @@ namespace build2
           // Then the options checksum.
           //
           {
-            sha256 cs;
+            xxh64 cs;
             append_options (cs, t, "qt.uic.options");
 
             if (dd.expect (cs.string ()) != nullptr)
