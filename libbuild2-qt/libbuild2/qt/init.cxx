@@ -706,7 +706,7 @@ namespace build2
         // Make sure the cxx module has been loaded since we need its hxx{}
         // target type.
         //
-        if (!cast_false<bool> (rs["cxx.loaded"]))
+        if (!cast_false<bool> (rs["cxx.build.loaded"]))
           fail (loc) << "cxx module must be loaded before qt.uic module";
 
         module& m (extra.module_as<module> ());

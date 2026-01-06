@@ -8,5 +8,5 @@ using qt.uic
 % test
 {{
   diag test $>
-  echo ($qt.moc.loaded && $qt.rcc.loaded && $qt.uic.loaded) >>>?'true'
+  echo ($qt.moc.build.loaded && $qt.rcc.build.loaded && $qt.uic.build.loaded) >>>?'true'
 }}
